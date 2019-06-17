@@ -10,6 +10,9 @@
 # LDFLAGS += $(addprefix -L, $(LIBDIRS))
 # ENABLE_SHARED=true,false
 
+MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+SRC_ROOT_DIR := $(dir $(MAKEFILE_PATH))
+
 ifeq ($(OS), Windows_NT)
 	OS=Windows
 endif
@@ -27,16 +30,17 @@ endif
 endif
 
 #CFLAGS += -g -Wall -O3
-CFLAGS += -g -w -O3
+CFLAGS += -g -O0 -Wall # -w
 ifeq ($(ENABLE_SHARED),true)
 	CFLAGS += -shared -fPIC -fvisibility=hidden
 endif
-CXXFLAGS += $(CFLAGS) -std=c++11
+DEPFLAGS += -MMD -MP
+CXXFLAGS += $(CFLAGS) $(DEPFLAGS) -std=c++11
 ARFLAGS := cr
 
 INCDIR = include
 LIBDIR = lib
-SRCDIR = src 
+SRCDIR = src demo include
 BINDIR = bin
 DEPDIR = 3rd
 CONFDIR = etc
@@ -45,21 +49,25 @@ DOCDIR  = doc
 
 TARGET = libOrionDecoder
 
-DIRS += $(shell find $(SRCDIR) -type d)
-DIRS += $(shell find $(SRCDIR/hw) -type d)
-SRCS += $(foreach dir, $(DIRS), $(wildcard $(dir)/*.c $(dir)/*.cc $(dir)/*.cpp))
+DIRS += $(shell find $(SRCDIR) -type d ! -path '$(SRCDIR)/.*')
+#DIRS += $(shell find $(SRCDIR/hw) -type d)
+SRCS += $(foreach dir, $(DIRS), $(wildcard $(dir)/*.c $(dir)/*.cc $(dir)/*.cpp  $(dir)/*.cxx  $(dir)/*.C))
 #OBJS := $(patsubst %.cpp, %.o, $(SRCS))
 OBJS := $(addsuffix .o, $(basename $(SRCS)))
+DEPS := $(addsuffix .d, $(basename $(SRCS)))
+RS_LIBS := 
+#RS_LIBS := -lOrionPortal -lReadFace2
 
 $(info TARGET=$(TARGET))
+$(info SRCDIR=$(SRCDIR))
 $(info DIRS=$(DIRS))
 $(info SRCS=$(SRCS))
 $(info OBJS=$(OBJS))
 
-INCDIRS  += $(INCDIR) $(DEPDIR)/include $(DIRS) /Users/cheewing/3rd/ffmpeg/include
+INCDIRS  += $(INCDIR) $(SRC_ROOT_DIR) $(DEPDIR)/include $(DIRS) /Users/cheewing/3rd/ffmpeg/include $(SRC_ROOT_DIR)/../srs-librtmp/objs/include/
 CPPFLAGS += $(addprefix -I, $(INCDIRS))
 
-LIBDIRS += $(LIBDIR) $(DEPDIR)/lib /Users/cheewing/3rd/ffmpeg/lib
+LIBDIRS += $(LIBDIR) $(DEPDIR)/lib /Users/cheewing/3rd/ffmpeg/lib $(SRC_ROOT_DIR)/../srs-librtmp/objs/lib/
 LDFLAGS += $(addprefix -L, $(LIBDIRS))
 ifeq ($(OS), Windows)
 	LDFLAGS += -static-libgcc -static-libstdc++
@@ -74,7 +82,7 @@ else
 ifeq ($(OS), Android)
 	LDFLAGS += -Wl,-Bdynamic -llog -lm
 else
-	LDFLAGS += -Wl,-lstdc++ -lpthread -lm -ldl -lOrionPortal -lReadFace2 -lavcodec -lavfilter -lavutil -lavformat -lswresample -lswscale
+	LDFLAGS += $(RS_LIBS) -lavcodec -lavfilter -lavutil -lavformat -lswresample -lswscale -l:srs_librtmp.a -Wl,-lstdc++ -lpthread -lm -ldl 
 endif
 endif
 
@@ -116,9 +124,12 @@ endif
 endif
 
 clean:
-	$(RM) $(OBJS)
-	$(RM) $(BINDIR)
-	$(RM) $(LIBDIR)
+	-$(RM) $(LIBDIR)/$(TARGET).so
+	-$(RM) $(BINDIR)/$(TARGET)
+	-$(RM) $(OBJS)
+	-$(RM) $(BINDIR)
+	-$(RM) $(DEPS)
+	#$(RM) $(LIBDIR)
 
 install:
 
@@ -131,5 +142,9 @@ dist:
 undist:
 	$(RM) $(DISTDIR)
 
-.PHONY: default all prepare clean install uninstall dist undist
+rebuild: clean
+	+make all
 
+.PHONY: default all prepare clean install uninstall dist undist rebuild
+
+-include $(DEPS)

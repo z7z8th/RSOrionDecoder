@@ -2,6 +2,7 @@
 #define __RS_RUNNABLE_H__
 
 #include <thread>
+#include <functional>
 
 namespace readsense {
 

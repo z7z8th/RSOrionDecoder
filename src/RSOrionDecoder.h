@@ -66,7 +66,10 @@ RS_API void	CALLSPEC SetServerAddress(RSHandle rsHandle,
 									  std::string address, 
 								      std::string appKey,
 									  std::string appSecret);
-
+RS_API void	CALLSPEC SetRtmpServer(RSHandle rsHandle,
+									const std::string &rtmp_server,
+									const std::string &path,
+									int index);
 
 
 //#ifdef __cplusplus

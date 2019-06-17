@@ -106,7 +106,7 @@ int RSFaceTrack::GetRegionFrame(readsense::RSFrame<uint8> &rsFrameSrc,
 {
 	int srcWidth = rsFrameSrc.width_;
 	int srcHeight = rsFrameSrc.height_;
-	int srcBpp = rsFrameSrc.bpp_;
+	// int srcBpp = rsFrameSrc.bpp_;
 
 	rsFrameDst.type_ = 0x80E0;
 	rsFrameDst.width_ = srcWidth;
@@ -122,7 +122,7 @@ int RSFaceTrack::GetRegionFrame(readsense::RSFrame<uint8> &rsFrameSrc,
 	int y = static_cast<int>(regionRatio.yRatio * srcHeight);
 	int width = static_cast<int>(regionRatio.widthRatio * srcWidth);
 	int height = static_cast<int>(regionRatio.heightRatio * srcHeight);
-	int pitch = width * 3;
+	// int pitch = width * 3;
 
 	rs_rect captureRegion = { x, y, width, height };
 	rs_rect frameRect = { 0, 0, srcWidth, srcHeight };
@@ -177,23 +177,23 @@ int RSFaceTrack::Filter(readsense::RSFrame<uint8> &rsFrame,
 		}
 
 		frameTrack = iter->second;
-		//hlogi("trackid=%d, current_frames=%d, last_frame=%d, \
+		/* hlogi("trackid=%d, current_frames=%d, last_frame=%d, \
 			track_count=%d, snap_interval_frame_=%d, max_pitures_per_track_=%d", \
 			trackId, current_frames_, frameTrack.lastFrame, frameTrack.trackCount, \
-			snapIntervalFrame, maxPituresPerTrack);
+			snapIntervalFrame, maxPituresPerTrack); */
 
 		if ((current_frames_ != frameTrack.lastFrame) &&
 			(current_frames_ - frameTrack.lastFrame <= snapIntervalFrame)) {
-			//hlogi("trackid=%d, current_frames=%d, last_frame=%d, snap_interval_frame_=%d", \
-				trackId, current_frames_, frameTrack.lastFrame, snapIntervalFrame);
+			/* hlogi("trackid=%d, current_frames=%d, last_frame=%d, snap_interval_frame_=%d", \
+				trackId, current_frames_, frameTrack.lastFrame, snapIntervalFrame); */
 			return 1000;		// in snap interval frames
 		}
 
 		/* if max_pitures_per_track_ set */
 		if (maxPituresPerTrack) {
 			if (frameTrack.trackCount >= maxPituresPerTrack) {
-				//hlogi("trackid=%d, current_frames=%d, track_count=%d, max_pitures_per_track_=%d", \
-					trackId, current_frames_, frameTrack.trackCount, maxPituresPerTrack);
+				/* hlogi("trackid=%d, current_frames=%d, track_count=%d, max_pitures_per_track_=%d", \
+					trackId, current_frames_, frameTrack.trackCount, maxPituresPerTrack); */
 				return 1001;
 			}
 		}

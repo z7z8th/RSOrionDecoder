@@ -35,7 +35,7 @@ struct PersonBaseInfo
 	XImage ximage;
 };
 
-typedef struct DeviceIdentifyLogReq
+struct DeviceIdentifyLogReq
 {
 	std::string macAddress;
 	std::string personuuid;
@@ -59,7 +59,7 @@ typedef struct DeviceIdentifyLogReq
 	}
 };
 
-typedef struct DeviceStatusLogReq
+struct DeviceStatusLogReq
 {
 	std::string macAddress;
 	std::string startTime; //起始时间
@@ -67,7 +67,7 @@ typedef struct DeviceStatusLogReq
 	int online;
 };
 
-typedef struct PageReq
+struct PageReq
 {
 	int currentPage;
 	int itemCount;
@@ -82,7 +82,7 @@ typedef struct PageReq
 	}
 };
 
-typedef struct PageResp
+struct PageResp
 {
 	int totalCount;
 	int currentPage;
@@ -95,7 +95,7 @@ typedef struct PageResp
 	}
 };
 
-typedef struct DeviceListReq
+struct DeviceListReq
 {
 	std::string deviceName;
 	std::string deviceuuid;
@@ -116,7 +116,7 @@ typedef struct DeviceListReq
 	}
 };
 
-typedef struct DeviceRegisterReq
+struct DeviceRegisterReq
 {
 	std::string macAddress;
 	std::string deviceIp;
@@ -135,7 +135,7 @@ typedef struct DeviceRegisterReq
 	}
 };
 
-typedef struct DetectPicReq
+struct DetectPicReq
 {
 	XImage image;
 	bool isAttributeDet;
@@ -149,7 +149,7 @@ typedef struct DetectPicReq
 	}
 };
 
-typedef struct PersonListReq
+struct PersonListReq
 {
 	std::string personName;
 	std::string personuuid;
@@ -160,7 +160,7 @@ typedef struct PersonListReq
 	}
 };
 
-typedef struct GroupListReq
+struct GroupListReq
 {
 	std::string groupName;
 	std::string groupuuid;
@@ -171,7 +171,7 @@ typedef struct GroupListReq
 	}
 };
 
-typedef struct OnlineIdentifyLogReq
+struct OnlineIdentifyLogReq
 {
 	std::string personuuid;
 	std::string startTime; //起始时间

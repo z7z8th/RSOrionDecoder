@@ -1,0 +1,12 @@
+
+set follow-fork-mode child
+set detach-on-fork off
+
+break main
+break demo.cpp:70
+break demo.cpp:78
+
+break RSFaceTrack::SetFaceFilterPolicy
+break RSFaceDefence::start
+
+info break

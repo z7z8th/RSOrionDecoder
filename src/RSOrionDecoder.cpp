@@ -81,3 +81,10 @@ RS_API void	CALLSPEC SetServerAddress(RSHandle rsHandle,
 	RSOrionDefence* pObj = (RSOrionDefence*)rsHandle;
 	pObj->SetServerAddress(address, appKey, appSecret);
 }
+
+RS_API void	CALLSPEC SetRtmpServer(RSHandle rsHandle, const std::string &rtmp_server, const std::string &path, int index) {
+	if (rsHandle == NULL) return;
+
+	RSOrionDefence* pObj = (RSOrionDefence*)rsHandle;
+	pObj->SetRtmpServer(rtmp_server, path, index);
+}

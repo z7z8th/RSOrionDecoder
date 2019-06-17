@@ -4,7 +4,7 @@
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 #include "libutils/hmedia.h"
-#include "rs_frame.h"
+//#include "rs_frame.h"
 
 #define HARDWARE_DECODE     1
 #define SOFTWARE_DECODE     2
@@ -28,10 +28,12 @@ private:
 	void	cleanup();
 	int		getVideoSource();
 	void	makeFrame();
-
+	int     hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type);
+	static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
+    	                                    const enum AVPixelFormat *pix_fmts);
 protected:
 	HFrame		hFrame_;
-	readsense::RSFrame<uint8> rsFrame_;
+	//readsense::RSFrame<uint8> rsFrame_;
 
 	HMedia		hMedia_;
 
@@ -42,6 +44,9 @@ protected:
 	AVPacket			*pPacket_ = NULL;
 	AVPixelFormat		dstPixelFormat_;
 	SwsContext			*pSwsCtx_ = NULL;
+	AVBufferRef         *hw_device_ctx = NULL;
+	// TODO: hw_pix_fmt should be an array, since multiple format might be supported
+	static enum AVPixelFormat  hw_pix_fmt;
 
 	std::string	videoSrc_;
 
@@ -61,6 +66,8 @@ protected:
 	uint8	*pData_[4];
 	int		lineSize_[4];
 };
+
+enum AVPixelFormat  RSFFMpegDecoder::hw_pix_fmt = AV_PIX_FMT_NONE;
 
 RSFFMpegDecoder::RSFFMpegDecoder()
 {
@@ -132,11 +139,50 @@ void RSFFMpegDecoder::SetMedia(HMedia hMedia)
 	hMedia_ = hMedia;
 }
 
+int RSFFMpegDecoder::hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type)
+{
+    int err = 0;
+
+    if ((err = av_hwdevice_ctx_create(&hw_device_ctx, type,
+                                      NULL, NULL, 0)) < 0) {
+        fprintf(stderr, "Failed to create specified HW device.\n");
+        return err;
+    }
+    ctx->hw_device_ctx = av_buffer_ref(hw_device_ctx);
+
+    return err;
+}
+
+#warning hw_pix_fmt shared by thread, need lock?
+enum AVPixelFormat RSFFMpegDecoder::get_hw_format(AVCodecContext *ctx,
+                                        const enum AVPixelFormat *pix_fmts)
+{
+    const enum AVPixelFormat *p;
+	fprintf(stderr, "enter get_hw_format\n");
+    for (p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+		fprintf(stderr, "HW surface format: %d %s\n", *p, av_get_pix_fmt_name(*p));
+        if (*p == hw_pix_fmt)
+            return *p;
+    }
+
+    fprintf(stderr, "Failed to get HW surface format.\n");
+	exit(1);
+    return AV_PIX_FMT_NONE;
+}
+
 int RSFFMpegDecoder::GetCodec()
 {
+	int iRet = 0;
+	enum AVHWDeviceType type = AV_HWDEVICE_TYPE_VAAPI;
+	/* AVHWDeviceType
+		Intel: AV_HWDEVICE_TYPE_VAAPI
+		Nvidia: AV_HWDEVICE_TYPE_CUDA
+		Mac: AV_HWDEVICE_TYPE_VIDEOTOOLBOX
+		Software: AV_HWDEVICE_TYPE_NONE
+	*/
+
 	getVideoSource();
 
-	int iRet = 0;
 	pAVFormatCtx_ = avformat_alloc_context();
 	if (pAVFormatCtx_ == NULL) {
 		hloge("avformat_alloc_context");
@@ -155,11 +201,35 @@ int RSFFMpegDecoder::GetCodec()
 	}
 	hlogi("stream_num=%d", pAVFormatCtx_->nb_streams);
 
-	video_stream_index = av_find_best_stream(pAVFormatCtx_, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+	AVCodec* codec = NULL;
+	video_stream_index = av_find_best_stream(pAVFormatCtx_, AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0);
 
 	if (video_stream_index < 0) {
 		hloge("Can not find video stream.");
 		return -20;
+	}
+
+	if (type != AV_HWDEVICE_TYPE_NONE) {
+		for (int i = 0;; i++) {
+			const AVCodecHWConfig *config = avcodec_get_hw_config(codec, i);
+
+			if (!config)
+				break;
+			if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX &&
+				config->device_type == type) {
+				// use the first supported format
+				if (hw_pix_fmt == AV_PIX_FMT_NONE)
+					hw_pix_fmt = config->pix_fmt;
+				printf("hw supported pixel format %d\n", config->pix_fmt);
+				//break;
+			}
+		}
+		if (hw_pix_fmt == AV_PIX_FMT_NONE) {
+			fprintf(stderr, "Decoder %s does not support device type %s.\n",
+					codec->name, av_hwdevice_get_type_name(type));
+			// return -1;
+			type = AV_HWDEVICE_TYPE_NONE;
+		}
 	}
 
 	AVStream* video_stream = pAVFormatCtx_->streams[video_stream_index];
@@ -177,15 +247,16 @@ int RSFFMpegDecoder::GetCodec()
 	AVCodecParameters* codecpar = video_stream->codecpar;
 	hlogi("codec_id=%d:%s", codecpar->codec_id, avcodec_get_name(codecpar->codec_id));
 
-	std::string cuvid(avcodec_get_name(codecpar->codec_id));
-	cuvid += "_cuvid";
-	hlogi("cuvid=%s", cuvid.c_str());
+/*=============
+	std::string hw_decoder_name(avcodec_get_name(codecpar->codec_id));
+	// hw_decoder_name += "_cuvid";
+	hw_decoder_name += "_vaapi";
+	hlogi("hw_decoder_name=%s", hw_decoder_name.c_str());
 
-	AVCodec* codec = NULL;
 	if (decode_mode == HARDWARE_DECODE && codec == NULL) {
-	    codec = avcodec_find_decoder_by_name(cuvid.c_str());
+	    codec = avcodec_find_decoder_by_name(hw_decoder_name.c_str());
 	    if (codec == NULL) {
-	        hlogi("Can not find HARDWARE cuvid decoder %s!", cuvid.c_str());
+	        hlogi("Can not find HARDWARE hw_decoder_name decoder %s!", hw_decoder_name.c_str());
 	        // no return, try soft-decoder
 	    }
 	}
@@ -199,8 +270,9 @@ int RSFFMpegDecoder::GetCodec()
 		}
 	}
 
+=============*/
 	hlogi("codec_name: %s=>%s", codec->name, codec->long_name);
-
+	
 	pAVCodecCtx_ = avcodec_alloc_context3(codec);
 	if (pAVCodecCtx_ == NULL) {
 		hloge("avcodec_alloc_context3!");
@@ -213,6 +285,13 @@ int RSFFMpegDecoder::GetCodec()
 		return iRet;
 	}
 
+
+	if (type != AV_HWDEVICE_TYPE_NONE) {
+		pAVCodecCtx_->get_format = &RSFFMpegDecoder::get_hw_format;
+		if (hw_decoder_init(pAVCodecCtx_, type) < 0)
+			return -1;
+	}
+
 	//iRet = avcodec_open2(pAVCodecCtx_, codec, NULL);
 	iRet = avcodec_open2(pAVCodecCtx_, NULL, NULL);
 	hlogi("avcodec_open2 ret: %d", iRet);
@@ -221,7 +300,7 @@ int RSFFMpegDecoder::GetCodec()
 		return iRet;
 	}
 
-	int sw = pAVCodecCtx_->width;
+/* 	int sw = pAVCodecCtx_->width;
 	int sh = pAVCodecCtx_->height;
 	int dw = sw >> 2 << 2; // align = 4
 	int dh = sh;
@@ -229,14 +308,17 @@ int RSFFMpegDecoder::GetCodec()
 	makeFrame();
 
 	pAVFrame_ = av_frame_alloc();
+*/
 	pPacket_ = av_packet_alloc();
-	pSwsCtx_ = sws_getContext(sw, sh, pAVCodecCtx_->pix_fmt, dw, dh, \
+	/* pSwsCtx_ = sws_getContext(sw, sh, pAVCodecCtx_->pix_fmt, dw, dh, \
 		dstPixelFormat_, SWS_FAST_BILINEAR, NULL, NULL, NULL);
 
 	hlogi("sw=%d sh=%d dw=%d dh=%d", sw, sh, dw, dh);
+*/
 	hlogi("src_pix_fmt=%d:%s dst_pix_fmt=%d:%s", \
 		pAVCodecCtx_->pix_fmt, av_get_pix_fmt_name(pAVCodecCtx_->pix_fmt), \
 		dstPixelFormat_, av_get_pix_fmt_name(dstPixelFormat_));
+	return 0;
 }
 
 int RSFFMpegDecoder::Decode()
@@ -252,7 +334,7 @@ int RSFFMpegDecoder::Decode()
 	}
 
 	if (avcodec_send_packet(pAVCodecCtx_, pPacket_) == 0) {
-		// Ò»¸öavPacket¿ÉÄÜ°üº¬¶àÖ¡Êý¾Ý£¬ËùÒÔÐèÒªÊ¹ÓÃwhileÑ­»·Ò»Ö±¶ÁÈ¡
+		// Ò»ï¿½ï¿½avPacketï¿½ï¿½ï¿½Ü°ï¿½ï¿½ï¿½ï¿½ï¿½Ö¡ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÒªÊ¹ï¿½ï¿½whileÑ­ï¿½ï¿½Ò»Ö±ï¿½ï¿½È¡
 		while (avcodec_receive_frame(pAVCodecCtx_, pAVFrame_) == 0) {
 			sws_scale(pSwsCtx_, pAVFrame_->data, pAVFrame_->linesize, 0, pAVFrame_->height, pData_, lineSize_);
 
@@ -299,7 +381,7 @@ int RSFFMpegDecoder::getVideoSource()
 
 	return 0;
 }
-
+/*
 void RSFFMpegDecoder::makeFrame() {
 	int sw = pAVCodecCtx_->width;
 	int sh = pAVCodecCtx_->height;
@@ -314,7 +396,6 @@ void RSFFMpegDecoder::makeFrame() {
 	hFrame_.type = 0x80E0;//GL_BGR;
 	hFrame_.bpp = 24;
 	hFrame_.buf.init(dw * dh * hFrame_.bpp / 8);
-
 	rsFrame_.src_ = hMedia_.src;
 	rsFrame_.width_ = dw;
 	rsFrame_.height_ = dh;
@@ -324,6 +405,7 @@ void RSFFMpegDecoder::makeFrame() {
 	pData_[0] = rsFrame_.data();
 	lineSize_[0] = dw * 3;
 }
+*/
 
 int RSFFMpegDecoder::GetFps() {
 	return fps;

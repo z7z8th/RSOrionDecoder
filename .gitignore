@@ -1,0 +1,16 @@
+*.o
+*.d
+*~
+.*~
+core
+default.log
+/.vscode/ipch
+/bin/libOrionDecoder
+libOrionDecoder.so
+*.bgr24.tid_*
+*.nv12.tid_*
+*.h264.tid_*
+*.yuv420p.tid_*
+*.bgr24
+*.yuv420p
+*.h264

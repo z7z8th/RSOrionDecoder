@@ -8,7 +8,7 @@
 
 #include "rs_face_defence.h"
 
-typedef struct VideoHandler {
+struct VideoHandler {
 	std::string _videoSrc;
 	std::shared_ptr<RSFaceDefence> _spRSFaceDefence;
 };
@@ -27,6 +27,7 @@ public:
 	void	SetDecodeMode(int decodeMode);
 	int		SetFaceFilterPolicy(readsense::FilterPolicy &fileter_policy);
 	void	SetServerAddress(std::string address, std::string appKey, std::string appSecret);
+	int	    SetRtmpServer(const std::string &rtmp_server, const std::string &path, int index);
 
 	int  Start();
 	void Stop();
@@ -34,6 +35,7 @@ public:
 private:
 	std::atomic<int> currentVideoNum_{ 0 };
 	std::list<std::shared_ptr<VideoHandler>> listVideoHandlerPtr_;
+	int rtmpServerAppIndex = 0;
 };
 
 RSOrionDefence::RSOrionDefence() = default;
@@ -94,6 +96,13 @@ int	RSOrionDefence::SetFaceFilterPolicy(
 	for (auto &pVideoHandlerPtr : listVideoHandlerPtr_) {
 		pVideoHandlerPtr->_spRSFaceDefence->SetFaceFilterPolicy(
 			fileter_policy);
+	}
+	return 0;
+}
+
+int	RSOrionDefence::SetRtmpServer(const std::string &rtmp_server, const std::string &path, int index) {
+	for (auto &pVideoHandlerPtr : listVideoHandlerPtr_) {
+		pVideoHandlerPtr->_spRSFaceDefence->SetRtmpServer(rtmp_server, path + std::to_string(index) + "/", ++rtmpServerAppIndex);
 	}
 	return 0;
 }
