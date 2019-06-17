@@ -1,0 +1,83 @@
+
+#define DB_FILE_PATH   "cfg/readsense.db"
+#define CFG_PIC_PATH   "cfg/piccfg.ini"
+#define CFG_INIT_LICENSE_PATH  "cfg/initLicnese.lic"
+#define CFG_INIT_AUTH_CONTENT_PATH  "cfg/initAuthContent.lic"
+
+bool RSApiHandle::GetInitCfgInfo(std::string filePath, std::string& initInfo)
+{
+	std::ifstream filestream(filePath.c_str());
+	if (!filestream.is_open())
+	{
+		return false;
+	}
+	std::stringstream streambuf;
+	streambuf << filestream.rdbuf();
+	initInfo = streambuf.str();
+	return true;
+}
+
+bool RSApiHandle::InitCameraRecog(int& errorCode)
+{
+	errorCode = 0;
+	
+	std::string strLicenseContent("");
+	bool getLicFlag = GetInitCfgInfo(CFG_INIT_LICENSE_PATH, strLicenseContent);
+	if (!getLicFlag)
+	{
+		AfxMessageBox(CString("打开license文件失败！！！"));
+		return false;
+	}
+	m_RunFlag = true;
+	rsInitLicenseManagerV2(&m_Plicense, strLicenseContent.c_str());
+	
+	std::string strAuthContent("");
+	getLicFlag = GetInitCfgInfo(CFG_INIT_AUTH_CONTENT_PATH, strAuthContent);
+	if (!getLicFlag)
+	{
+		AfxMessageBox(CString("打开strAuthContent文件失败！！！"));
+		return false;
+	}
+	int activateFlag = rsActivateLicenseManagerV2(m_Plicense, strAuthContent.c_str());
+	printf("rsActivateLicenseManagerV2 activateFlag = %d \n", activateFlag);
+	if (activateFlag != 0) {
+		return -1;
+	}
+
+
+	rsInitFaceTrack(&m_PfaceTrack, m_Plicense);
+	if (m_PfaceTrack == NULL)
+	{
+		return false;
+	}
+	
+	rsInitLivenessDetect(&m_pfaceLiveDet, m_Plicense);
+	if (m_pfaceLiveDet == NULL)
+	{
+		return false;
+	}
+	
+	
+	rsInitFaceRecognition(&m_PfaceRecognition, m_Plicense, DB_FILE_PATH);
+	if (m_PfaceRecognition == NULL)
+	{
+		return false;
+	}
+	rsRecognitionSetConfidence(m_PfaceRecognition, 75);
+	rsInitFaceDetect(&m_pfaceDetect, m_Plicense);
+	if (m_pfaceDetect == NULL)
+	{
+		return false;
+	}
+	rsInitAttributeDetect(&m_pfaceAttribute, m_Plicense);
+	if (m_pfaceAttribute == NULL)
+	{
+		return false;
+	}
+	rsInitFaceQuality(&m_pfaceQuality, m_Plicense);
+	if (m_pfaceQuality == NULL)
+	{
+		return false;
+	}	
+	return true;
+}
