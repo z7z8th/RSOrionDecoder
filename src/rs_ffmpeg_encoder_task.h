@@ -15,7 +15,9 @@ public:
 protected:
     virtual bool Output(std::shared_ptr<RSAVFramePacket> frame);
 	virtual std::shared_ptr<RSAVFramePacket> Input();
-
+	virtual bool ShouldStop() {
+		return stop_flag_;
+	}
 public:
 	virtual void Run();
 };

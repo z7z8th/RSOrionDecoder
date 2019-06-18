@@ -14,6 +14,8 @@ public:
 protected:
 	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
 	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
+	virtual bool ShouldStop() = 0;
+
 	int		ConnectRtmpServer();
 	void    PublishStream();
 private:
@@ -82,12 +84,16 @@ rtmp_destroy:
 
 void RSRtmpPublish::PublishStream() {
 	int64_t count = 0;
-	double fps = 25;
-	while (true) {
+
+	while (!ShouldStop()) {
 		std::shared_ptr<RSAVFramePacket> avdata(Input());
 		AVPacket *pkt = avdata->packet_;
         // send out the h264 packet over RTMP
-        int ret = srs_h264_write_raw_frames(rtmp, reinterpret_cast<char *>(pkt->data), pkt->size, pkt->dts*1000/fps, pkt->pts*1000/fps);
+        int ret = srs_h264_write_raw_frames(rtmp,
+                                            reinterpret_cast<char *>(pkt->data),
+                                            pkt->size,
+                                            pkt->dts*av_q2d(avdata->time_base)*1000,
+                                            pkt->pts*av_q2d(avdata->time_base)*1000);
         if (ret != 0) {
             #warning ignore duplicated sps and pps will lead to lag
             if (srs_h264_is_dvbsp_error(ret)) {
@@ -116,10 +122,10 @@ void RSRtmpPublish::PublishStream() {
 #endif
         // @remark, when use encode device, it not need to sleep.
         if (count++ == 9) {
-            usleep(1000 * 1000 * count / fps);
+            usleep(1000 * 1000 * count / avdata->fps_);
             count = 0;
         }
-		//Output(std::move(avdata));
+		Output(std::move(avdata));
 	}
 rtmp_destroy:
     srs_rtmp_destroy(rtmp);

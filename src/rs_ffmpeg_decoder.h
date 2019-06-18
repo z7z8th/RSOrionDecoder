@@ -4,7 +4,7 @@
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 #include "libutils/hmedia.h"
-//#include "rs_frame.h"
+#include "rs_avframe_cxx.h"
 
 #define HARDWARE_DECODE     1
 #define SOFTWARE_DECODE     2
@@ -15,7 +15,10 @@ class RSFFMpegDecoder {
 public:
 	RSFFMpegDecoder();
 	~RSFFMpegDecoder();
-
+protected:
+	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
+	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
+	virtual bool ShouldStop() = 0;
 public:
 	void	Init();
 	int		Decode();
@@ -27,7 +30,7 @@ public:
 private:
 	void	cleanup();
 	int		getVideoSource();
-	void	makeFrame();
+	//void	makeFrame();
 	int     hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type);
 	static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
     	                                    const enum AVPixelFormat *pix_fmts);
@@ -54,13 +57,12 @@ protected:
 	int audio_stream_index;
 	int subtitle_stream_index;
 
-	int video_time_base_num;
-	int video_time_base_den;
+	AVRational video_time_base;
 
-	int         fps;
+	int         fps = VIDEO_FALL_BACK_FPS;
 	int         decode_mode = HARDWARE_DECODE;
-	int64       duration;	// ms
-	int64       start_time; // ms
+	int64       duration = 0;	// ms
+	int64       start_time = 0; // ms
 	int         signal;
 
 	uint8	*pData_[4];
@@ -208,6 +210,7 @@ int RSFFMpegDecoder::GetCodec()
 		hloge("Can not find video stream.");
 		return -20;
 	}
+	av_dump_format(pAVFormatCtx_, video_stream_index, videoSrc_.c_str(), 0);
 
 	if (type != AV_HWDEVICE_TYPE_NONE) {
 		for (int i = 0;; i++) {
@@ -220,7 +223,7 @@ int RSFFMpegDecoder::GetCodec()
 				// use the first supported format
 				if (hw_pix_fmt == AV_PIX_FMT_NONE)
 					hw_pix_fmt = config->pix_fmt;
-				printf("hw supported pixel format %d\n", config->pix_fmt);
+				printf("hw supported pixel format %d %s\n", config->pix_fmt, av_get_pix_fmt_name(config->pix_fmt));
 				//break;
 			}
 		}
@@ -233,14 +236,13 @@ int RSFFMpegDecoder::GetCodec()
 	}
 
 	AVStream* video_stream = pAVFormatCtx_->streams[video_stream_index];
-	video_time_base_num = video_stream->time_base.num;
-	video_time_base_den = video_stream->time_base.den;
+	video_time_base = video_stream->time_base;
 
-	if (video_stream->avg_frame_rate.den)
-		fps = video_stream->avg_frame_rate.num / video_stream->avg_frame_rate.den;
-	if (video_time_base_den && video_time_base_num) {
-		duration = video_stream->duration / (double)video_time_base_den * video_time_base_num * 1000;
-		start_time = video_stream->start_time / (double)video_time_base_den * video_time_base_num * 1000;
+	if (video_stream->avg_frame_rate.den && video_stream->avg_frame_rate.num)
+		fps = av_q2d(video_stream->avg_frame_rate);
+	if (video_stream->time_base.den && video_stream->time_base.num) {
+		duration = video_stream->duration * av_q2d(video_stream->time_base) * 1000;
+		start_time = video_stream->start_time * av_q2d(video_stream->time_base) * 1000;
 	}
 	hlogi("fps=%d duration=%lldms start_time=%lldms", fps, duration, start_time);
 
@@ -294,30 +296,70 @@ int RSFFMpegDecoder::GetCodec()
 
 int RSFFMpegDecoder::Decode()
 {
-	av_init_packet(pPacket_);
-	int iRet = av_read_frame(pAVFormatCtx_, pPacket_);
-	if (iRet != 0) {
-		return 2001;
+	int ret = -1;
+	AVFrame *sw_frame = NULL;
+    AVFrame *tmp_frame = NULL;
+
+	if (!(pAVFrame_ = av_frame_alloc())){
+		fprintf(stderr, "Can not alloc frame\n");
+		ret = AVERROR(ENOMEM);
+		goto fail;
 	}
 
-	if (!pPacket_ || pPacket_->stream_index != video_stream_index) {
-		return 2002;
-	}
-
-	if (avcodec_send_packet(pAVCodecCtx_, pPacket_) == 0) {
-		while (avcodec_receive_frame(pAVCodecCtx_, pAVFrame_) == 0) {
-			sws_scale(pSwsCtx_, pAVFrame_->data, pAVFrame_->linesize, 0, pAVFrame_->height, pData_, lineSize_);
-
-			hFrame_.ts = pAVFrame_->pts / (double)video_time_base_den * video_time_base_num * 1000;
-			hFrame_.userdata = pData_[0];
-
-			//spHFrameBuf_->push(&hFrame_);	// restore into frame queue
+	while (!ShouldStop()) {
+		//av_init_packet(pPacket_);
+		int iRet = av_read_frame(pAVFormatCtx_, pPacket_);
+		hlogi("av_read_frame, iRet: 0x%x", iRet);
+		if (iRet != 0) {
+			usleep(2*1000*1000);  // sleep 2 seconds if read fail.
+			continue;
 		}
+
+		if (!pPacket_ || pPacket_->stream_index != video_stream_index) {
+			av_packet_unref(pPacket_);
+			continue;
+		}
+
+		if (avcodec_send_packet(pAVCodecCtx_, pPacket_) == 0) {
+			// multiple frames for one packet
+			while (avcodec_receive_frame(pAVCodecCtx_, pAVFrame_) == 0) {
+				if (pAVFrame_->format == hw_pix_fmt) {
+					if (!(sw_frame = av_frame_alloc())) {
+						fprintf(stderr, "Can not alloc frame\n");
+						ret = AVERROR(ENOMEM);
+						goto fail;
+					}
+					/* retrieve data from GPU to CPU */
+					if ((ret = av_hwframe_transfer_data(sw_frame, pAVFrame_, 0)) < 0) {
+						fprintf(stderr, "Error transferring the data to system memory\n");
+						goto fail;
+					}
+					tmp_frame = sw_frame;
+					av_frame_unref(pAVFrame_);
+				} else {
+					tmp_frame = pAVFrame_;
+				}
+
+				if (tmp_frame->pts == AV_NOPTS_VALUE)
+					tmp_frame->pts = pPacket_->pts;
+				if (tmp_frame->pkt_dts == AV_NOPTS_VALUE)
+					tmp_frame->pkt_dts = pPacket_->dts;
+				//printf("push frame fmt %d size %dx%d\n", tmp_frame->format, tmp_frame->width, tmp_frame->height);
+				std::shared_ptr<RSAVFramePacket> avframe(new RSAVFramePacket());
+				avframe->AllocFrame().FrameMoveRefFrom(tmp_frame);
+				avframe->src_ = hMedia_.src;
+				avframe->fps_ = fps;
+				avframe->time_base = video_time_base;
+				Output(avframe);
+			}
+		}
+
+		av_packet_unref(pPacket_);
 	}
-
-	av_packet_unref(pPacket_);
-
 	return 0;
+
+fail:
+	return -1;
 }
 
 int RSFFMpegDecoder::getVideoSource()

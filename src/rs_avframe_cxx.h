@@ -4,6 +4,8 @@
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 
+const int VIDEO_FALL_BACK_FPS = 25;
+
 class RSAVFramePacket {
 public:
     RSAVFramePacket() = default;
@@ -72,7 +74,10 @@ public:
             return std::string(av_get_pix_fmt_name(static_cast<enum AVPixelFormat>(frame_->format)));
         return "";
     }
+
     std::string src_;
+    int fps_ = VIDEO_FALL_BACK_FPS;
+    AVRational time_base = { 0, 0 };
 
 //protected:
     AVFrame* frame_ = NULL;

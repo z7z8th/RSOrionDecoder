@@ -4,7 +4,7 @@
 Introduction
 ===
 Code flow
-===
+---
 * Dispatch multiple video source (local video or live stream) to threads of child process
 * Intel HW VAAPI Decoder decodes input video to YUV in RSFFMpegDecoderTask, pass the decoded frame to next task (Data Dumper)
 * Dump decoded video frame to file for review, pass frame to RSFFMpegEncoderTask
@@ -13,12 +13,12 @@ Code flow
 * RTMP publisher publishes raw H264 packet to RTMP server [ossrs/srs](https://github.com/ossrs/srs)
 
 Video Decoder/Encoder
-===
+---
 * FFMPEG
 * Intel VAAPI HW
 
 RTMP Publisher
-===
+---
 * srs-librtmp
 
 Build
@@ -62,9 +62,9 @@ Run
     ./objs/srs -c conf/rtmp.conf
     ```
 2. Test RTMP publish (optional)
-   ```
-   research/librtmp/objs/srs_h264_raw_publish path/to/encoded-test.h264 rtmp://127.0.0.1:1935/live/1 25`
-   ```
+    ```
+    research/librtmp/objs/srs_h264_raw_publish path/to/encoded-test.h264 rtmp://127.0.0.1:1935/live/1 25`
+    ```
 3. Run RSOrionDecoder to test Decode/Encode/RTMP_Publish
     ```shell
     cd ~/src/RSOrionDecoder

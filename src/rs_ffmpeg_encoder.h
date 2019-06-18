@@ -13,6 +13,7 @@ public:
 protected:
 	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
 	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
+	virtual bool ShouldStop() = 0;
 public:
 	void	Init();
 	int		Encode();
@@ -38,6 +39,8 @@ protected:
     int height_;
     enum AVPixelFormat input_format_;
     std::string src_;
+    int fps_ = VIDEO_FALL_BACK_FPS;
+    AVRational time_base_;
 };
 
 RSFFMpegEncoder::RSFFMpegEncoder()
@@ -151,7 +154,6 @@ int RSFFMpegEncoder::encode_write(AVCodecContext *avctx, AVFrame *frame, FILE *f
 {
     int ret = 0;
     AVPacket enc_pkt;
-    static __thread int64_t dts = 0;
 
     av_init_packet(&enc_pkt);
     enc_pkt.data = NULL;
@@ -167,16 +169,18 @@ int RSFFMpegEncoder::encode_write(AVCodecContext *avctx, AVFrame *frame, FILE *f
             break;
 
         enc_pkt.stream_index = 0;
-        enc_pkt.dts = dts;
-        enc_pkt.pts = dts;
-        dts++;
+        if (enc_pkt.pts == AV_NOPTS_VALUE)
+            enc_pkt.pts = sw_frame->pts;
+        if (enc_pkt.dts == AV_NOPTS_VALUE)
+            enc_pkt.dts = sw_frame->pkt_dts;
         if (fout)
             ret = fwrite(enc_pkt.data, enc_pkt.size, 1, fout);
         std::shared_ptr<RSAVFramePacket> avpacket(new RSAVFramePacket);
         avpacket->AllocPacket().PacketMoveRefFrom(&enc_pkt);
         avpacket->src_ = src_;
-        if(!Output(avpacket))
-            av_packet_unref(&enc_pkt);
+        avpacket->fps_ = fps_;
+        avpacket->time_base = time_base_;
+        Output(avpacket);
     }
 
 end:
@@ -198,7 +202,7 @@ int RSFFMpegEncoder::Encode() {
     }
     */
 
-    while (1) {
+    while (!ShouldStop()) {
         if (!(sw_frame = av_frame_alloc())) {
             err = AVERROR(ENOMEM);
             goto close;
@@ -216,6 +220,8 @@ int RSFFMpegEncoder::Encode() {
             break;
         */
         std::shared_ptr<RSAVFramePacket> avdata = Input();
+        fps_ = avdata->fps_;
+        time_base_ = avdata->time_base;
         avdata->FrameMoveRefTo(sw_frame);
 
         //printf("encode frame \n");

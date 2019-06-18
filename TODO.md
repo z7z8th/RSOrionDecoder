@@ -7,4 +7,4 @@
 7. fix std::cout and printf mixed
 8. resource leak check
 9. master process polling child status
-10. 
+10. ~~get frame rate from input file for RTMP publish~~
