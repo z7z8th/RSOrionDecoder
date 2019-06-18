@@ -7,7 +7,6 @@
 #include "rs_ffmpeg_encoder.h"
 
 class RSFFMpegEncoderTask : public RSFFMpegEncoder,
-	//public readsense::CRunnableAloneTaskList<readsense::RSFrame<uint8>>
     public readsense::CRunnableAloneTaskList<std::shared_ptr<RSAVFramePacket>>
 {
 public:
@@ -44,7 +43,6 @@ void RSFFMpegEncoderTask::Run() {
         width_ = avdata->frame_->width;
         height_ = avdata->frame_->height;
         src_ = avdata->src_;
-        //input_format_ = AV_PIX_FMT_BGR24;
     }
     Init();
     if (!GetCodec()) {

@@ -246,31 +246,6 @@ int RSFFMpegDecoder::GetCodec()
 
 	AVCodecParameters* codecpar = video_stream->codecpar;
 	hlogi("codec_id=%d:%s", codecpar->codec_id, avcodec_get_name(codecpar->codec_id));
-
-/*=============
-	std::string hw_decoder_name(avcodec_get_name(codecpar->codec_id));
-	// hw_decoder_name += "_cuvid";
-	hw_decoder_name += "_vaapi";
-	hlogi("hw_decoder_name=%s", hw_decoder_name.c_str());
-
-	if (decode_mode == HARDWARE_DECODE && codec == NULL) {
-	    codec = avcodec_find_decoder_by_name(hw_decoder_name.c_str());
-	    if (codec == NULL) {
-	        hlogi("Can not find HARDWARE hw_decoder_name decoder %s!", hw_decoder_name.c_str());
-	        // no return, try soft-decoder
-	    }
-	}
-
-	if (codec == NULL) {
-		hlogi("try to find soft-decoder");
-		codec = avcodec_find_decoder(codecpar->codec_id);
-		if (codec == NULL) {
-			hloge("Can not find decoder %s!", avcodec_get_name(codecpar->codec_id));
-			return -20;
-		}
-	}
-
-=============*/
 	hlogi("codec_name: %s=>%s", codec->name, codec->long_name);
 	
 	pAVCodecCtx_ = avcodec_alloc_context3(codec);
@@ -310,11 +285,7 @@ int RSFFMpegDecoder::GetCodec()
 	pAVFrame_ = av_frame_alloc();
 */
 	pPacket_ = av_packet_alloc();
-	/* pSwsCtx_ = sws_getContext(sw, sh, pAVCodecCtx_->pix_fmt, dw, dh, \
-		dstPixelFormat_, SWS_FAST_BILINEAR, NULL, NULL, NULL);
 
-	hlogi("sw=%d sh=%d dw=%d dh=%d", sw, sh, dw, dh);
-*/
 	hlogi("src_pix_fmt=%d:%s dst_pix_fmt=%d:%s", \
 		pAVCodecCtx_->pix_fmt, av_get_pix_fmt_name(pAVCodecCtx_->pix_fmt), \
 		dstPixelFormat_, av_get_pix_fmt_name(dstPixelFormat_));
@@ -334,7 +305,6 @@ int RSFFMpegDecoder::Decode()
 	}
 
 	if (avcodec_send_packet(pAVCodecCtx_, pPacket_) == 0) {
-		// һ��avPacket���ܰ�����֡���ݣ�������Ҫʹ��whileѭ��һֱ��ȡ
 		while (avcodec_receive_frame(pAVCodecCtx_, pAVFrame_) == 0) {
 			sws_scale(pSwsCtx_, pAVFrame_->data, pAVFrame_->linesize, 0, pAVFrame_->height, pData_, lineSize_);
 

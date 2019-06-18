@@ -7,8 +7,6 @@
 #include "rs_avframe_cxx.h"
 
 class RSFFMpegDecoderTask : public RSFFMpegDecoder,
-	//public RSFormatChainedRunnableTaskList
-	//public readsense::CRunnableAloneTaskList<readsense::RSFrame<uint8>> 
 	public readsense::CRunnableAloneTaskList<std::shared_ptr<RSAVFramePacket>>
 {
 public:

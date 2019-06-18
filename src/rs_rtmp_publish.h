@@ -4,7 +4,6 @@
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 #include "rs_avframe_cxx.h"
-#include "libutils/hmedia.h"
 #include "srs_librtmp.h"
 
 class RSRtmpPublish {
@@ -33,7 +32,6 @@ protected:
 
 RSRtmpPublish::RSRtmpPublish()
 {
-	//Init();
 }
 
 RSRtmpPublish::~RSRtmpPublish()

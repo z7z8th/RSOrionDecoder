@@ -3,7 +3,7 @@
 
 #include <string>
 
-#define NO_FACE_TRACK
+//#define FACE_TRACK
 
 #include "hw/hthread.h"
 #include "hw/hframe.h"

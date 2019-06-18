@@ -21,11 +21,9 @@ public:
 	void SetTaskListSrc(std::shared_ptr<CTaskQueue<T>> sp_src);
 	void SetTaskListDst(std::shared_ptr<CTaskQueue<T>> sp_dst);
 
-	// 线程消息投递
 	void Push(const T&& t);
 	void Push(const T& t);
 
-	// 线程主逻辑
 	virtual void Run() = 0;
 
 protected:

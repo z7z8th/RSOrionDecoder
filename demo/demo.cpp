@@ -11,8 +11,6 @@
 
 int main()
 {
-	//std::string videoSource171("rtsp://10.1.12.171:554/media/live/1/1");
-	//std::string videoSource171("/home/bob/src/ffmpeg/test.mp4");
 	std::string vSrcArray[] = {
 		//"/home/bob/Videos/test/ffmpeg/test.mp4",
 		"/home/bob/Videos/test/1-muddy-puddle.mp4",
@@ -24,7 +22,9 @@ int main()
 		"/home/bob/Videos/test/7-mummy-pig-at-work.mp4",
 		"/home/bob/Videos/test/8-camping.mp4",
 	};
-/* 	std::string videoSource234("rtsp://10.1.12.234:554/media/live/1/1");
+	/*	
+	std::string videoSource171("rtsp://10.1.12.171:554/media/live/1/1");
+ 	std::string videoSource234("rtsp://10.1.12.234:554/media/live/1/1");
 	std::string videoSource67("rtsp://10.1.12.67:554/media/live/1/1");
 	std::string videoSource17("rtsp://10.1.12.17:554/media/live/1/1");
 	std::string videoSource16("rtsp://10.1.12.16:554/media/live/1/1");
@@ -33,11 +33,8 @@ int main()
 	std::string videoSource248("rtsp://10.1.12.248:554/media/live/1/1");
 	std::string videoSource235("rtsp://10.1.12.235:554/media/live/1/1");
 	std::string videoSource151("rtsp://10.1.12.151:554/media/live/1/1");
-	std::string videoSourceMp4("/home/xiaobai/src/ffmpeg/test.mp4"); */
-
-/* 	std::string address = "39.106.21.118";
-	const std::string appKey = "29ae8ff0386f4810";
-	const std::string appSecret = "39a81d0d7d0e4948"; */
+	std::string videoSourceMp4("/home/xiaobai/src/ffmpeg/test.mp4");
+	*/
 
 	readsense::RegionRatio regionRatio;
 	regionRatio.xRatio = 0.0;
@@ -48,28 +45,6 @@ int main()
 	readsense::FilterPolicy filter_policy;
 	filter_policy._regionRatio = regionRatio;
 	filter_policy._maxPituresPerTrack = 5;
-
-
-	//AddVideoSource(rsHandle, videoSourceMp4);
-	/*
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	 */
-	//AddVideoSource(rsHandle, videoSource171);
-	//AddVideoSource(rsHandle, videoSource171);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
 
 	std::cout<<"master process" << std::endl;
 
@@ -96,8 +71,8 @@ int main()
 
 			/*
 			SetServerAddress(rsHandle, address, appKey, appSecret);
+			SetFaceFilterPolicy(rsHandle, filter_policy);
 			*/
-			//SetFaceFilterPolicy(rsHandle, filter_policy);
 			SetRtmpServer(rsHandle, "rtmp://127.0.0.1:1935", "/live/", iproc+1);
 			rsOrionDecoderStart(rsHandle);
 			//rsOrionDecoderInit(&rsHandle);

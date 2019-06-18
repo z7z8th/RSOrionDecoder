@@ -7,7 +7,6 @@
 #include "rs_rtmp_publish.h"
 
 class RSRtmpPublishTask : public RSRtmpPublish,
-	//public readsense::CRunnableAloneTaskList<readsense::RSFrame<uint8>>
     public readsense::CRunnableAloneTaskList<std::shared_ptr<RSAVFramePacket>>
 {
 public:
@@ -39,12 +38,6 @@ std::shared_ptr<RSAVFramePacket> RSRtmpPublishTask::Input() {
 }
 
 void RSRtmpPublishTask::Run() {
-/*     {
-        std::shared_ptr<RSAVFramePacket> avdata = _Peek();
-        width_ = avdata->frame_->width;
-        height_ = avdata->frame_->height;
-        src_ = avdata->src_;
-    } */
     if (!ConnectRtmpServer()) {
         PublishStream();
     } else {

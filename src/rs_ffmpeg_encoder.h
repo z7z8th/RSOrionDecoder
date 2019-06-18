@@ -190,12 +190,13 @@ int RSFFMpegEncoder::Encode() {
     // int size   = width_ * height_;
     FILE *fout = NULL;
 
-/*     fout = fopen("rs_ffmpeg_encoder.h264", "w+");
+    /*     
+    fout = fopen("rs_ffmpeg_encoder.h264", "w+");
     if (!fout) {
         std::cout << "error open encoder dump file." << std::endl;
         return -1;
     }
-*/
+    */
 
     while (1) {
         if (!(sw_frame = av_frame_alloc())) {

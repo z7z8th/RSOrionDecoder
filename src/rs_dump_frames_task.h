@@ -13,8 +13,6 @@
 #include "rs_path.h"
 
 class RSDumpFramesTask : /* public RSDumpFrames, */
-//	public RSFormatChainedRunnableTaskList
-//	public readsense::CRunnableAloneTaskList<readsense::RSFrame<uint8>> 
 	public readsense::CRunnableAloneTaskList<std::shared_ptr<RSAVFramePacket>>
 {
 public:
@@ -117,7 +115,6 @@ void RSDumpFramesTask::Run() {
 		if (sp_next_task_ != nullptr) {
 			sp_next_task_->Push(std::move(avdata));
 		}
-		//UploadImage(rsFrame.data(), rsFrame.width_, rsFrame.height_, "54:13:79:7e:dd:be");
 	}
 fail:
 	return;
