@@ -128,14 +128,6 @@ int RSOrionDefence::Start()
 		pVideoHandlerPtr->_spRSFaceDefence->start();
 	}
 
-	while (true) {
-#warning should handle signal TERM INT here
-		if (true) {
-			//std::this_thread::yield();
-			std::this_thread::sleep_for(std::chrono::seconds(60));
-		}
-	}
-
 	return 0;
 }
 

@@ -74,6 +74,9 @@ public:
             return std::string(av_get_pix_fmt_name(static_cast<enum AVPixelFormat>(frame_->format)));
         return "";
     }
+    bool IsInvalidForEOF() {
+        return !frame_ && !packet_;
+    }
 
     std::string src_;
     int fps_ = VIDEO_FALL_BACK_FPS;

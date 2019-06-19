@@ -107,22 +107,47 @@ int RSFaceDefence::start()
 
 int RSFaceDefence::stop()
 {
-	sp_ffmpeg_decoder_task_->Stop();
-	if (DUMP_DECODED_FRAMES)
-		sp_dump_decoded_task_->Stop();
-/* 	sp_face_track_task_->Stop();
-	sp_image_upload_task_->Stop();
- */	
-	sp_ffmpeg_encoder_task_->Stop();
+
+
+#if 0
+	/* Stop in reverse order, otherwise will starve */
+	sp_rtmp_publish_task_->Stop();
 	if (DUMP_ENCODED_PACKETS)
 		sp_dump_encoded_task_->Stop();
+	sp_ffmpeg_encoder_task_->Stop();
+/*
+	sp_image_upload_task_->Stop();
+ 	sp_face_track_task_->Stop();
+ */
+	if (DUMP_DECODED_FRAMES)
+		sp_dump_decoded_task_->Stop();
+	sp_ffmpeg_decoder_task_->Stop();
+#endif
 
-	return HThread::stop();
+	/* Stop decoder, it will send empty frame to chained tasks to end them */
+	sp_ffmpeg_decoder_task_->Stop();
+
+	/* Join in reverse order */
+	sp_rtmp_publish_task_->Join();
+	if (DUMP_ENCODED_PACKETS)
+		sp_dump_encoded_task_->Join();
+	sp_ffmpeg_encoder_task_->Join();
+/*
+	sp_image_upload_task_->Join();
+ 	sp_face_track_task_->Join();
+ */
+	if (DUMP_DECODED_FRAMES)
+		sp_dump_decoded_task_->Join();
+	sp_ffmpeg_decoder_task_->Join();
+	
+	HThread::stop();
+	return 0;
 }
 
 void RSFaceDefence::doTask()
 {
-	std::this_thread::sleep_for(std::chrono::milliseconds(60*1000));
+	// don't sleep for too long, otherwise it will slow to exit.
+	std::this_thread::sleep_for(std::chrono::milliseconds(1*1000));
 }
 
 void RSFaceDefence::SetServerAddress(

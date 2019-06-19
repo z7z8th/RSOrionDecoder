@@ -1,6 +1,7 @@
 #ifndef __RS_FFMPEG_DECODER_TASK_H__
 #define __RS_FFMPEG_DECODER_TASK_H__
 
+#include <iostream>
 #include "hw/hlog.h"
 #include "readsense/rs_runnable_alone_task_list.h"
 #include "rs_ffmpeg_decoder.h"
@@ -44,14 +45,19 @@ std::shared_ptr<RSAVFramePacket> RSFFMpegDecoderTask::Input() {
 void RSFFMpegDecoderTask::Run() {
 	if (Init()) {
 		hloge("Init fail.\n");
-		return;
+		goto done;
 	}
 	if (!GetCodec()) {
 		Decode();
 	} else {
 		hloge("GetCodec failed.\n");
-		return;
+		goto done;
 	}
+done:
+	FinishTaskChain();
+    OutputDateTime();
+	std::cout << "RSFFMpegDecoderTask::Run exited." << std::endl;
+	return;
 }
 
 /* 

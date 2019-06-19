@@ -6,6 +6,7 @@
 #include "rs_ffmpeg_util.h"
 #include "libutils/hmedia.h"
 #include "rs_avframe_cxx.h"
+#include "rs_date.h"
 
 #define HARDWARE_DECODE     1
 #define SOFTWARE_DECODE     2
@@ -27,6 +28,9 @@ protected:
 	int		Init();
 	int		Decode();
 	int		GetCodec();
+	void FinishTaskChain() {
+		Output(std::make_shared<RSAVFramePacket>());
+	}
 
 private:
 	void	CleanUp();
@@ -254,7 +258,7 @@ int RSFFMpegDecoder::GetCodec()
 		hloge("Can not find video stream.");
 		return -20;
 	}
-	av_dump_format(pAVFormatCtx_, video_stream_index, videoSrc_.c_str(), 0);
+	// av_dump_format(pAVFormatCtx_, video_stream_index, videoSrc_.c_str(), 0);
 
 	if (type != AV_HWDEVICE_TYPE_NONE) {
 		for (int i = 0;; i++) {

@@ -51,6 +51,7 @@
         "algorithm": "cpp",
         "future": "cpp",
         "codecvt": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "iomanip": "cpp"
     }
 }

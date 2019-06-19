@@ -13,8 +13,15 @@ public:
 	RSRtmpPublishTask();
 	virtual ~RSRtmpPublishTask();
 protected:
-    virtual bool Output(std::shared_ptr<RSAVFramePacket> frame);
-	virtual std::shared_ptr<RSAVFramePacket> Input();
+	bool Output(std::shared_ptr<RSAVFramePacket> frame) {
+		if (sp_next_task_ != nullptr) {
+			sp_next_task_->Push(frame);
+		}
+		return sp_next_task_ != nullptr;
+	}
+	std::shared_ptr<RSAVFramePacket> Input() {
+		return _Pop();
+	}
 	virtual bool ShouldStop() {
 		return stop_flag_;
 	}
@@ -28,23 +35,16 @@ RSRtmpPublishTask::RSRtmpPublishTask() {
 RSRtmpPublishTask::~RSRtmpPublishTask() {
 }
 
-bool RSRtmpPublishTask::Output(std::shared_ptr<RSAVFramePacket> frame) {
-	if (sp_next_task_ != nullptr) {
-		sp_next_task_->Push(frame);
-	}
-    return sp_next_task_ != nullptr;
-}
-
-std::shared_ptr<RSAVFramePacket> RSRtmpPublishTask::Input() {
-	return _Pop();
-}
-
 void RSRtmpPublishTask::Run() {
     if (!ConnectRtmpServer()) {
         PublishStream();
     } else {
         std::cout << "ConnectRtmpServer Failed." << std::endl;
     }
+
+	FinishTaskChain();
+	OutputDateTime();
+    std::cout << "RSRtmpPublish::Run exited." << std::endl;
 }
 
 #endif //__RS_RTMP_PUBLISH_TASK_H__

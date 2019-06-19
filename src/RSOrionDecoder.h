@@ -51,6 +51,7 @@ typedef void* RSHandle;
 RS_API int CALLSPEC rsOrionDecoderInit(RSHandle* pRSHandle);
 RS_API int CALLSPEC rsOrionDecoderUninit(RSHandle* pRSHandle);
 RS_API int CALLSPEC rsOrionDecoderStart(RSHandle rsHandle);
+RS_API void CALLSPEC rsOrionDecoderStop(RSHandle rsHandle);
 
 RS_API int CALLSPEC AddVideoSource(RSHandle rsHandle,
 								   std::string videoSource, 

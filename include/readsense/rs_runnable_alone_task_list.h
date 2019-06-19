@@ -29,11 +29,13 @@ protected:
 	T _Pop() { return std::move(task_list_.Pop()); }
 	T _Peek() { return std::move(task_list_.Peek()); }
 
+	void Clear() { task_list_.Clear(); }
+
 	CRunnableAloneTaskList(const CRunnableAloneTaskList&) = delete;
 	CRunnableAloneTaskList& operator=(const CRunnableAloneTaskList&) = delete;
 
 protected:
-	CTaskQueue<T>	task_list_;			// ÿ���̶߳����Լ����������
+	CTaskQueue<T>	task_list_;
 	std::shared_ptr<CRunnableAloneTaskList<T>> sp_next_task_{ nullptr };
 };
 

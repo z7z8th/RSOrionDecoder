@@ -9,8 +9,8 @@
 #include "hw/hframe.h"
 #include "rs_ffmpeg_util.h"
 #include "readsense/rs_runnable_alone_task_list.h"
-#include "rs_frame.h"
 #include "rs_path.h"
+#include "rs_date.h"
 
 class RSDumpFramesTask : /* public RSDumpFrames, */
 	public readsense::CRunnableAloneTaskList<std::shared_ptr<RSAVFramePacket>>
@@ -22,11 +22,22 @@ public:
 		discardData_ = discard;
 	}
 
-public:
+protected:
+    bool Output(std::shared_ptr<RSAVFramePacket> frame) {
+        if (sp_next_task_ != nullptr) {
+            sp_next_task_->Push(frame);
+        }
+        return sp_next_task_ != nullptr;
+    }	
+    virtual std::shared_ptr<RSAVFramePacket> Input() {
+        return _Pop();
+    }
+	std::string GetOutputFileName(const std::string &mediaSrc);
+	void FinishTaskChain() {
+		Output(std::make_shared<RSAVFramePacket>());
+	}
 	virtual void Run();
 protected:
-	std::string GetOutputFileName(const std::string &mediaSrc);
-
 	std::string prefix_;
 	std::string format_;
 	std::string ofname_;
@@ -35,7 +46,6 @@ protected:
 
 RSDumpFramesTask::RSDumpFramesTask(const std::string &prefix, const std::string &format)
 	: prefix_(prefix), format_(format) {
-
 }
 
 RSDumpFramesTask::~RSDumpFramesTask() {
@@ -60,8 +70,11 @@ std::string RSDumpFramesTask::GetOutputFileName(const std::string &mediaSrc){
 void RSDumpFramesTask::Run() {
 	std::ofstream of;
 	while (!stop_flag_) {
-		std::shared_ptr<RSAVFramePacket> avdata(_Pop());
-
+		std::shared_ptr<RSAVFramePacket> avdata(Input());
+		if (avdata->IsInvalidForEOF()) {
+			Output(std::move(avdata));
+			goto done;
+		}
 		if (!of.is_open()) {
 			if (avdata->frame_)
 				format_ = avdata->FramePixelFormat();
@@ -112,12 +125,14 @@ void RSDumpFramesTask::Run() {
 			of.write(reinterpret_cast<const char *>(avdata->packet_->data), avdata->packet_->size);
 		}
 
-		if (sp_next_task_ != nullptr) {
-			sp_next_task_->Push(std::move(avdata));
-		}
+		Output(std::move(avdata));
 	}
+
 fail:
-	return;
+done:
+	FinishTaskChain();
+    OutputDateTime();
+	std::cout << "RSDumpFramesTask::Run exited." << std::endl;
 }
 
 #endif // __RS_DUMP_FRAMES_TASK_H__

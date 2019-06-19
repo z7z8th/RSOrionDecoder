@@ -5,6 +5,7 @@
 #include "rs_ffmpeg_util.h"
 #include "libutils/hmedia.h"
 #include "rs_frame.h"
+#include "rs_date.h"
 
 class RSFFMpegEncoder {
 public:
@@ -14,6 +15,9 @@ protected:
 	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
 	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
 	virtual bool ShouldStop() = 0;
+	void FinishTaskChain() {
+		Output(std::make_shared<RSAVFramePacket>());
+	}
 public:
 	void	Init();
 	int		Encode();
@@ -220,6 +224,10 @@ int RSFFMpegEncoder::Encode() {
             break;
         */
         std::shared_ptr<RSAVFramePacket> avdata = Input();
+        if (avdata->IsInvalidForEOF()) {
+            Output(std::move(avdata));
+            goto close;
+        }
         fps_ = avdata->fps_;
         time_base_ = avdata->time_base;
         avdata->FrameMoveRefTo(sw_frame);

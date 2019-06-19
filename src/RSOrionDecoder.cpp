@@ -26,6 +26,13 @@ RS_API int CALLSPEC rsOrionDecoderStart(RSHandle rsHandle) {
 	return pObj->Start();
 }
 
+RS_API void CALLSPEC rsOrionDecoderStop(RSHandle rsHandle) {
+	if (rsHandle == NULL) return;
+
+	RSOrionDefence* pObj = (RSOrionDefence*)rsHandle;
+	return pObj->Stop();
+}
+
 RS_API int CALLSPEC AddVideoSource(RSHandle rsHandle,
 	std::string videoSource, bool bNetwork) {
 	if (rsHandle == NULL) return -1;

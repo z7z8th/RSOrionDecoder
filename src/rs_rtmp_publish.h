@@ -5,6 +5,7 @@
 #include "rs_ffmpeg_util.h"
 #include "rs_avframe_cxx.h"
 #include "srs_librtmp.h"
+#include "rs_date.h"
 
 class RSRtmpPublish {
 public:
@@ -15,6 +16,9 @@ protected:
 	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
 	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
 	virtual bool ShouldStop() = 0;
+	void FinishTaskChain() {
+		Output(std::make_shared<RSAVFramePacket>());
+	}
 
 	int		ConnectRtmpServer();
 	void    PublishStream();
@@ -87,6 +91,9 @@ void RSRtmpPublish::PublishStream() {
 
 	while (!ShouldStop()) {
 		std::shared_ptr<RSAVFramePacket> avdata(Input());
+        if (avdata->IsInvalidForEOF()) {
+            goto rtmp_destroy;
+        }
 		AVPacket *pkt = avdata->packet_;
         // send out the h264 packet over RTMP
         int ret = srs_h264_write_raw_frames(rtmp,
