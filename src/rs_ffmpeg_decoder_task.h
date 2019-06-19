@@ -42,6 +42,10 @@ std::shared_ptr<RSAVFramePacket> RSFFMpegDecoderTask::Input() {
 }
 
 void RSFFMpegDecoderTask::Run() {
+	if (Init()) {
+		hloge("Init fail.\n");
+		return;
+	}
 	if (!GetCodec()) {
 		Decode();
 	} else {

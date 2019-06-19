@@ -18,11 +18,9 @@ public:
 
 	int GetTaskListSize() { return task_list_.Size(); }
 
-	// �߳���ϢͶ��
 	void Push(const T&& t)	{ task_list_.Push(t); }
 	void Push(const T& t)	{ task_list_.Push(t); }
 
-	// �߳����߼�
 	virtual void Run() = 0;
 	virtual void SetSpNextTask(std::shared_ptr<CRunnableAloneTaskList<T>> \
 							   sp_next_task);

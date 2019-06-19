@@ -14,3 +14,4 @@ libOrionDecoder.so
 *.bgr24
 *.yuv420p
 *.h264
+perf.data*

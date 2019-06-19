@@ -53,6 +53,8 @@ private:
 
 RSFaceDefence::RSFaceDefence()
 {
+	//setSleepPolicy(SLEEP_FOR, 60 * 1000); // easy
+
 	sp_ffmpeg_decoder_task_ = std::make_shared<RSFFMpegDecoderTask>();
 #ifdef FACE_TRACK
 	sp_face_track_task_ = std::make_shared<RSFaceTrackTask>();
@@ -120,6 +122,7 @@ int RSFaceDefence::stop()
 
 void RSFaceDefence::doTask()
 {
+	std::this_thread::sleep_for(std::chrono::milliseconds(60*1000));
 }
 
 void RSFaceDefence::SetServerAddress(

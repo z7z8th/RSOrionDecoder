@@ -1,6 +1,7 @@
 #ifndef __RS_FFMPEG_DECODER_H__
 #define __RS_FFMPEG_DECODER_H__
 
+#include <vector>
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 #include "libutils/hmedia.h"
@@ -15,25 +16,42 @@ class RSFFMpegDecoder {
 public:
 	RSFFMpegDecoder();
 	~RSFFMpegDecoder();
+	int		GetFps();
+	void	SetMedia(HMedia hMedia);
+
 protected:
 	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
 	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
 	virtual bool ShouldStop() = 0;
-public:
-	void	Init();
+
+	int		Init();
 	int		Decode();
 	int		GetCodec();
 
-	int		GetFps();
-	void	SetMedia(HMedia hMedia);
-
 private:
-	void	cleanup();
-	int		getVideoSource();
+	void	CleanUp();
+	int		GetVideoSource();
 	//void	makeFrame();
 	int     hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type);
 	static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
     	                                    const enum AVPixelFormat *pix_fmts);
+	enum StreamType {
+		STREAM_TYPE_NONE = 0,
+		STREAM_TYPE_FILE,
+		STREAM_TYPE_NET,
+		STREAM_TYPE_MAX
+	};
+	enum StreamType GetStreamType();
+	int64_t GetRetryDelayMS() {
+		if (retryCnt < 8)
+			retryCnt++;
+		//retryCnt = retryCnt % 9;
+		const int64_t delayBase = 100; // 100ms
+		return delayBase << retryCnt;  // max 25.600 s
+	}
+	void ResetRetryCnt() {
+		retryCnt = 0;
+	}
 protected:
 	HFrame		hFrame_;
 	//readsense::RSFrame<uint8> rsFrame_;
@@ -52,21 +70,22 @@ protected:
 	static enum AVPixelFormat  hw_pix_fmt;
 
 	std::string	videoSrc_;
+	int         decode_mode = HARDWARE_DECODE;
 
 	int video_stream_index;
 	int audio_stream_index;
 	int subtitle_stream_index;
 
-	AVRational video_time_base;
-
+	AVRational  video_time_base;
 	int         fps = VIDEO_FALL_BACK_FPS;
-	int         decode_mode = HARDWARE_DECODE;
 	int64       duration = 0;	// ms
 	int64       start_time = 0; // ms
 	int         signal;
 
 	uint8	*pData_[4];
 	int		lineSize_[4];
+
+	int retryCnt = 0;
 };
 
 enum AVPixelFormat  RSFFMpegDecoder::hw_pix_fmt = AV_PIX_FMT_NONE;
@@ -79,22 +98,25 @@ RSFFMpegDecoder::RSFFMpegDecoder()
 	pAVFrame_ = NULL;
 	pPacket_ = NULL;
 	pSwsCtx_ = NULL;
-
-	Init();
 }
 
 RSFFMpegDecoder::~RSFFMpegDecoder()
 {
-	cleanup();
+	CleanUp();
 }
 
-void RSFFMpegDecoder::Init()
+int RSFFMpegDecoder::Init()
 {
 	av_register_all();
 	avcodec_register_all();
+
+	if (GetStreamType() == STREAM_TYPE_NONE)
+		return -1;
+
+	return 0;
 }
 
-void RSFFMpegDecoder::cleanup()
+void RSFFMpegDecoder::CleanUp()
 {
 	pInputFormat_ = NULL;
 	pAVFormatCtx_ = NULL;
@@ -141,6 +163,28 @@ void RSFFMpegDecoder::SetMedia(HMedia hMedia)
 	hMedia_ = hMedia;
 }
 
+enum RSFFMpegDecoder::StreamType RSFFMpegDecoder::GetStreamType() {
+	std::string uri = hMedia_.src;
+	if (!uri.length())
+		return STREAM_TYPE_NONE;
+	std::size_t sep_pos = uri.find_first_of("/");
+	if (sep_pos == 0 || sep_pos == std::string::npos || uri.find_first_of("file://") == 0)
+		return STREAM_TYPE_FILE;
+	sep_pos = uri.find_first_of(":/");
+	std::string schema = uri.substr(0, sep_pos);
+	static const std::vector<std::string> supportedSchema {
+		"rtsp", "rtmp",
+		"http", "https",
+		"udp", "tcp"
+	};
+
+	for (auto sch : supportedSchema) {
+		if (schema == sch)
+			return STREAM_TYPE_NET;
+	}
+	return STREAM_TYPE_FILE;
+}
+
 int RSFFMpegDecoder::hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type)
 {
     int err = 0;
@@ -183,7 +227,7 @@ int RSFFMpegDecoder::GetCodec()
 		Software: AV_HWDEVICE_TYPE_NONE
 	*/
 
-	getVideoSource();
+	GetVideoSource();
 
 	pAVFormatCtx_ = avformat_alloc_context();
 	if (pAVFormatCtx_ == NULL) {
@@ -311,8 +355,13 @@ int RSFFMpegDecoder::Decode()
 		int iRet = av_read_frame(pAVFormatCtx_, pPacket_);
 		hlogi("av_read_frame, iRet: 0x%x", iRet);
 		if (iRet != 0) {
-			usleep(2*1000*1000);  // sleep 2 seconds if read fail.
+			if (GetStreamType() == STREAM_TYPE_FILE)
+				goto done;
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(GetRetryDelayMS()));
 			continue;
+		} else {
+			ResetRetryCnt();
 		}
 
 		if (!pPacket_ || pPacket_->stream_index != video_stream_index) {
@@ -356,13 +405,14 @@ int RSFFMpegDecoder::Decode()
 
 		av_packet_unref(pPacket_);
 	}
+done:
 	return 0;
 
 fail:
 	return -1;
 }
 
-int RSFFMpegDecoder::getVideoSource()
+int RSFFMpegDecoder::GetVideoSource()
 {
 	switch (hMedia_.type) {
 	case readsense::MEDIA_TYPE_CAPTURE:
