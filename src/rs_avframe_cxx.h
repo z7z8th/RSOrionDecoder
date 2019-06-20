@@ -1,6 +1,7 @@
 #ifndef __RS_AVFRAME_H__
 #define __RS_AVFRAME_H__
 
+#include <memory>
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 
@@ -86,5 +87,7 @@ public:
     AVFrame* frame_ = NULL;
     AVPacket* packet_ = NULL;
 };
+
+using spRSAVFramePacket = std::shared_ptr<RSAVFramePacket>;
 
 #endif //__RS_AVFRAME_H__

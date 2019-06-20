@@ -38,6 +38,10 @@ public:
     RSProcManager() = default;
     virtual ~RSProcManager() {
     }
+    static RSProcManager& GetInstance() {
+        static RSProcManager procMgr;
+        return procMgr;
+    }
     void AddVideoSource(const std::string &vsrc) {
         for (auto& desc : childMap) {
             if (desc.AddVideoSource(vsrc))
@@ -66,7 +70,7 @@ public:
             SetRtmpServer(rsHandle, "rtmp://127.0.0.1:1935", "/live/", desc.childIndex + 1);
             rsOrionDecoderStart(rsHandle);
             //rsOrionDecoderInit(&rsHandle);
-            std::cout << "child process [" << desc.childIndex << "] pid " << getpid() << "started" << std::endl;
+            std::cout << "child process [" << desc.childIndex << "] pid " << getpid() << " started" << std::endl;
     }
     void StartChildProcs() {
         RegisterSignals();
@@ -91,10 +95,10 @@ public:
             kill(desc.pid, SIGTERM);
         }
         
-        for (size_t i=0; i<procMgr.childMap.size(); i++) {
+        for (size_t i=0; i<procMgr.childMap.size() - sigCHLDCnt; i++) {
             int status;
-            pid_t pid = wait(&status);
-            std::cout << "child process (pid " << pid << ") exited with status " << status << std::endl;
+            pid_t pid = waitpid(-1, &status, 0 /* WNOHANG */);
+            std::cout << "child process (pid " << pid << ") exited with status " << std::hex << status << std::dec << std::endl;
         }
 
         ::exit(SIGTERM);
@@ -108,8 +112,11 @@ public:
 
     void EventLoop() {
         #warning dummy Manager Loop, should handle socket event from child
-        while (!exiting)
+        while (!exiting) {
+            if (sigCHLDCnt != 0)
+                SigHandler_CHLD_nx();
             std::this_thread::sleep_for(std::chrono::milliseconds(1*1000));
+        }
             
         if (isChild) {
             ExitChildHimself();
@@ -125,14 +132,15 @@ public:
         }
         return nullptr;
     }
-    void StartChild(pid_t pid) {
-        std::cout << "StartChild for previously dead child process (pid " << pid << ")." << std::endl;
+    void RestartChild(pid_t pid) {
+        std::cout << "RestartChild for previously dead child process (pid " << pid << ")." << std::endl;
         RSChildProcDesc *desc = FindChildDesc(pid);
         if (!desc) {
             std::cout << "*** Not my child process (pid " << pid << ") ided." << std::endl
                       << "*** Manager process possibly corrupted." << std::endl;
             return;
         }
+        
         desc->pid = fork();
         if (desc->pid == 0) {
             isChild = true;
@@ -141,28 +149,27 @@ public:
         }
     }
 
-    static RSProcManager& GetInstance() {
-        static RSProcManager procMgr;
-        return procMgr;
+    void SigHandler_CHLD_nx() {
+        int status;
+        pid_t pid = waitpid(-1, &status, 0 /* WNOHANG */);
+        std::cout << "waitpid() return pid " << pid << " exited with status " << std::hex << status << std::dec << std::endl;
+        RestartChild(pid);
+        --sigCHLDCnt;
     }
     static void SigHandler_CHLD(int sig, siginfo_t *info, void *ucontext) {
         RSProcManager& procMgr = GetInstance();
-        std::cout << (procMgr.isChild ? "[child]" : "[parent]") << __func__ << " sig " << sig << " si_code" << info->si_code
+        std::cout << (procMgr.isChild ? "[child] " : "[parent] ") << __func__ << " sig " << sig << " si_code " << info->si_code
                   << " si_pid " << info->si_pid << " si_status " << info->si_status << std::endl;
         if (procMgr.exiting)
             return;
         if (procMgr.isChild)
             return;
-        int status;
-        pid_t pid = wait(&status);
-        std::cout << "wait pid " << pid << " exited with status " << status << std::endl;
-        pid = info->si_pid;
-        procMgr.StartChild(pid);
+        ++procMgr.sigCHLDCnt;
     }
     static void SigHandler_TERM(int sig, siginfo_t *info, void *ucontext) {
         RSProcManager& procMgr = GetInstance();
         procMgr.exiting = true;
-        std::cout << (procMgr.isChild ? "[child]" : "[parent]") << __func__ << " sig " << sig << " si_code " << info->si_code << std::endl;
+        std::cout << (procMgr.isChild ? "[child] " : "[parent] ") << __func__ << " sig " << sig << " si_code " << info->si_code << std::endl;
     }
     int RegisterSignals() {
         struct sigaction sa;
@@ -193,8 +200,10 @@ protected:
     std::vector<RSChildProcDesc> childMap;
     RSChildProcDesc* thisProcDesc;
     //static RSProcManager *procMgr;
-    bool isChild = false;
+    std::atomic<bool>  isChild { false };
     std::atomic<bool>  exiting { false };
+    std::atomic<bool>  restartChild { false };
+    std::atomic<int>   sigCHLDCnt { 0 };
 };
 
 #endif // __RS_PATH_H__

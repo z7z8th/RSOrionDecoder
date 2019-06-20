@@ -1,5 +1,5 @@
-#ifndef __RS_FFMPEG_DECODER_H__
-#define __RS_FFMPEG_DECODER_H__
+#ifndef __RS_FFMPEG_DECODER_TASK_H__
+#define __RS_FFMPEG_DECODER_TASK_H__
 
 #include <vector>
 #include "hw/hlog.h"
@@ -7,30 +7,28 @@
 #include "libutils/hmedia.h"
 #include "rs_avframe_cxx.h"
 #include "rs_date.h"
+#include "rs_chained_io_if.h"
 
 #define HARDWARE_DECODE     1
 #define SOFTWARE_DECODE     2
 
 #define DEFAULT_DECODE_MODE HARDWARE_DECODE
 
-class RSFFMpegDecoder {
+class RSFFMpegDecoderTask : 
+	public RSChainedIOTask<spRSAVFramePacket>
+{
 public:
-	RSFFMpegDecoder();
-	~RSFFMpegDecoder();
+	RSFFMpegDecoderTask();
+	~RSFFMpegDecoderTask();
 	int		GetFps();
 	void	SetMedia(HMedia hMedia);
 
 protected:
-	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
-	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
-	virtual bool ShouldStop() = 0;
+	virtual void Run();
 
 	int		Init();
 	int		Decode();
 	int		GetCodec();
-	void FinishTaskChain() {
-		Output(std::make_shared<RSAVFramePacket>());
-	}
 
 private:
 	void	CleanUp();
@@ -92,9 +90,9 @@ protected:
 	int retryCnt = 0;
 };
 
-enum AVPixelFormat  RSFFMpegDecoder::hw_pix_fmt = AV_PIX_FMT_NONE;
+enum AVPixelFormat  RSFFMpegDecoderTask::hw_pix_fmt = AV_PIX_FMT_NONE;
 
-RSFFMpegDecoder::RSFFMpegDecoder()
+RSFFMpegDecoderTask::RSFFMpegDecoderTask()
 {
 	pInputFormat_ = NULL;
 	pAVFormatCtx_ = NULL;
@@ -104,12 +102,12 @@ RSFFMpegDecoder::RSFFMpegDecoder()
 	pSwsCtx_ = NULL;
 }
 
-RSFFMpegDecoder::~RSFFMpegDecoder()
+RSFFMpegDecoderTask::~RSFFMpegDecoderTask()
 {
 	CleanUp();
 }
 
-int RSFFMpegDecoder::Init()
+int RSFFMpegDecoderTask::Init()
 {
 	av_register_all();
 	avcodec_register_all();
@@ -120,7 +118,7 @@ int RSFFMpegDecoder::Init()
 	return 0;
 }
 
-void RSFFMpegDecoder::CleanUp()
+void RSFFMpegDecoderTask::CleanUp()
 {
 	pInputFormat_ = NULL;
 	pAVFormatCtx_ = NULL;
@@ -162,12 +160,12 @@ void RSFFMpegDecoder::CleanUp()
 	}
 }
 
-void RSFFMpegDecoder::SetMedia(HMedia hMedia)
+void RSFFMpegDecoderTask::SetMedia(HMedia hMedia)
 {
 	hMedia_ = hMedia;
 }
 
-enum RSFFMpegDecoder::StreamType RSFFMpegDecoder::GetStreamType() {
+enum RSFFMpegDecoderTask::StreamType RSFFMpegDecoderTask::GetStreamType() {
 	std::string uri = hMedia_.src;
 	if (!uri.length())
 		return STREAM_TYPE_NONE;
@@ -189,7 +187,7 @@ enum RSFFMpegDecoder::StreamType RSFFMpegDecoder::GetStreamType() {
 	return STREAM_TYPE_FILE;
 }
 
-int RSFFMpegDecoder::hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type)
+int RSFFMpegDecoderTask::hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type)
 {
     int err = 0;
 
@@ -204,7 +202,7 @@ int RSFFMpegDecoder::hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceT
 }
 
 #warning hw_pix_fmt shared by thread, need lock?
-enum AVPixelFormat RSFFMpegDecoder::get_hw_format(AVCodecContext *ctx,
+enum AVPixelFormat RSFFMpegDecoderTask::get_hw_format(AVCodecContext *ctx,
                                         const enum AVPixelFormat *pix_fmts)
 {
     const enum AVPixelFormat *p;
@@ -220,7 +218,7 @@ enum AVPixelFormat RSFFMpegDecoder::get_hw_format(AVCodecContext *ctx,
     return AV_PIX_FMT_NONE;
 }
 
-int RSFFMpegDecoder::GetCodec()
+int RSFFMpegDecoderTask::GetCodec()
 {
 	int iRet = 0;
 	enum AVHWDeviceType type = AV_HWDEVICE_TYPE_VAAPI;
@@ -312,7 +310,7 @@ int RSFFMpegDecoder::GetCodec()
 
 
 	if (type != AV_HWDEVICE_TYPE_NONE) {
-		pAVCodecCtx_->get_format = &RSFFMpegDecoder::get_hw_format;
+		pAVCodecCtx_->get_format = &RSFFMpegDecoderTask::get_hw_format;
 		if (hw_decoder_init(pAVCodecCtx_, type) < 0)
 			return -1;
 	}
@@ -342,7 +340,7 @@ int RSFFMpegDecoder::GetCodec()
 	return 0;
 }
 
-int RSFFMpegDecoder::Decode()
+int RSFFMpegDecoderTask::Decode()
 {
 	int ret = -1;
 	AVFrame *sw_frame = NULL;
@@ -416,7 +414,7 @@ fail:
 	return -1;
 }
 
-int RSFFMpegDecoder::GetVideoSource()
+int RSFFMpegDecoderTask::GetVideoSource()
 {
 	switch (hMedia_.type) {
 	case readsense::MEDIA_TYPE_CAPTURE:
@@ -448,7 +446,7 @@ int RSFFMpegDecoder::GetVideoSource()
 	return 0;
 }
 /*
-void RSFFMpegDecoder::makeFrame() {
+void RSFFMpegDecoderTask::makeFrame() {
 	int sw = pAVCodecCtx_->width;
 	int sh = pAVCodecCtx_->height;
 
@@ -473,8 +471,26 @@ void RSFFMpegDecoder::makeFrame() {
 }
 */
 
-int RSFFMpegDecoder::GetFps() {
+int RSFFMpegDecoderTask::GetFps() {
 	return fps;
 }
 
-#endif // __RS_FFMPEG_DECODER_H__
+void RSFFMpegDecoderTask::Run() {
+	if (Init()) {
+		hloge("Init fail.\n");
+		goto done;
+	}
+	if (!GetCodec()) {
+		Decode();
+	} else {
+		hloge("GetCodec failed.\n");
+		goto done;
+	}
+done:
+	FinishTaskChain();
+    OutputDateTime();
+	std::cout << "RSFFMpegDecoderTask::Run exited." << std::endl;
+	return;
+}
+
+#endif // __RS_FFMPEG_DECODER_TASK_H__

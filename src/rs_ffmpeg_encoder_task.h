@@ -1,23 +1,21 @@
-#ifndef __RS_FFMPEG_ENCODER_H__
-#define __RS_FFMPEG_ENCODER_H__
+#ifndef __RS_FFMPEG_ENCODER_TASK_H__
+#define __RS_FFMPEG_ENCODER_TASK_H__
 
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 #include "libutils/hmedia.h"
 #include "rs_frame.h"
 #include "rs_date.h"
+#include "rs_chained_io_if.h"
 
-class RSFFMpegEncoder {
+class RSFFMpegEncoderTask : 
+    public RSChainedIOTask<spRSAVFramePacket>
+{
 public:
-	RSFFMpegEncoder();
-	virtual ~RSFFMpegEncoder();
+	RSFFMpegEncoderTask();
+	virtual ~RSFFMpegEncoderTask();
 protected:
-	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
-	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
-	virtual bool ShouldStop() = 0;
-	void FinishTaskChain() {
-		Output(std::make_shared<RSAVFramePacket>());
-	}
+	virtual void Run();
 public:
 	void	Init();
 	int		Encode();
@@ -47,23 +45,23 @@ protected:
     AVRational time_base_;
 };
 
-RSFFMpegEncoder::RSFFMpegEncoder()
+RSFFMpegEncoderTask::RSFFMpegEncoderTask()
 {
 }
 
-RSFFMpegEncoder::~RSFFMpegEncoder()
+RSFFMpegEncoderTask::~RSFFMpegEncoderTask()
 {
 	cleanup();
 }
 
-void RSFFMpegEncoder::Init()
+void RSFFMpegEncoderTask::Init()
 {
 /* 	av_register_all();
 	avcodec_register_all();
  */
 }
 
-void RSFFMpegEncoder::cleanup()
+void RSFFMpegEncoderTask::cleanup()
 {
     av_frame_free(&sw_frame);
     av_frame_free(&hw_frame);
@@ -71,11 +69,11 @@ void RSFFMpegEncoder::cleanup()
     av_buffer_unref(&hw_device_ctx);
 }
 
-void RSFFMpegEncoder::SetMedia(HMedia hMedia)
+void RSFFMpegEncoderTask::SetMedia(HMedia hMedia)
 {
 }
 
-int RSFFMpegEncoder::set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
+int RSFFMpegEncoderTask::set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
 {
     AVBufferRef *hw_frames_ref;
     AVHWFramesContext *frames_ctx = NULL;
@@ -105,7 +103,7 @@ int RSFFMpegEncoder::set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device
     return err;
 }
 
-int RSFFMpegEncoder::GetCodec() {
+int RSFFMpegEncoderTask::GetCodec() {
     int err;
     err = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI,
                                  NULL, NULL, 0);
@@ -154,7 +152,7 @@ close:
 }
 
 
-int RSFFMpegEncoder::encode_write(AVCodecContext *avctx, AVFrame *frame, FILE *fout)
+int RSFFMpegEncoderTask::encode_write(AVCodecContext *avctx, AVFrame *frame, FILE *fout)
 {
     int ret = 0;
     AVPacket enc_pkt;
@@ -193,7 +191,7 @@ end:
 }
 
 
-int RSFFMpegEncoder::Encode() {
+int RSFFMpegEncoderTask::Encode() {
     int err;
     // int size   = width_ * height_;
     FILE *fout = NULL;
@@ -224,8 +222,7 @@ int RSFFMpegEncoder::Encode() {
             break;
         */
         std::shared_ptr<RSAVFramePacket> avdata = Input();
-        if (avdata->IsInvalidForEOF()) {
-            Output(std::move(avdata));
+        if (!avdata) {
             goto close;
         }
         fps_ = avdata->fps_;
@@ -276,4 +273,24 @@ close:
     return err;
 }
 
-#endif //__RS_FFMPEG_ENCODER_H__
+void RSFFMpegEncoderTask::Run() {
+    {
+        std::shared_ptr<RSAVFramePacket> avdata = _Peek();
+        width_ = avdata->frame_->width;
+        height_ = avdata->frame_->height;
+        src_ = avdata->src_;
+    }
+    
+    Init();
+    if (!GetCodec()) {
+        Encode();
+    } else {
+        std::cout << "Get encode codec failed.\n" << std::endl;
+    }
+
+	FinishTaskChain();
+    OutputDateTime();
+    std::cout << "RSFFMpegEncoderTaskTask::Run exited." << std::endl;
+}
+
+#endif //__RS_FFMPEG_ENCODER_TASK_H__

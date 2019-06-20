@@ -1,30 +1,26 @@
-#ifndef __RS_RTMP_PUBLISH_H__
-#define __RS_RTMP_PUBLISH_H__
+#ifndef __RS_RTMP_PUBLISH_TASK_H__
+#define __RS_RTMP_PUBLISH_TASK_H__
 
 #include "hw/hlog.h"
 #include "rs_ffmpeg_util.h"
 #include "rs_avframe_cxx.h"
 #include "srs_librtmp.h"
 #include "rs_date.h"
+#include "rs_chained_io_if.h"
 
-class RSRtmpPublish {
+class RSRtmpPublishTask : 
+    public RSChainedIOTask<spRSAVFramePacket>
+{
 public:
-	RSRtmpPublish();
-	virtual ~RSRtmpPublish();
+	RSRtmpPublishTask();
+	virtual ~RSRtmpPublishTask();
 	void	SetRtmpServer(const std::string &rtmp_server, const std::string &path, int index);
 protected:
-	virtual bool Output(std::shared_ptr<RSAVFramePacket> frame) = 0;
-	virtual std::shared_ptr<RSAVFramePacket> Input() = 0;
-	virtual bool ShouldStop() = 0;
-	void FinishTaskChain() {
-		Output(std::make_shared<RSAVFramePacket>());
-	}
-
+    virtual void Run();
 	int		ConnectRtmpServer();
 	void    PublishStream();
 private:
-	void	cleanup();
-	int		getVideoSource();
+	void	Cleanup();
 protected:
 
     std::string rtmp_url;
@@ -36,25 +32,25 @@ protected:
     std::string src_;
 };
 
-RSRtmpPublish::RSRtmpPublish()
+RSRtmpPublishTask::RSRtmpPublishTask()
 {
 }
 
-RSRtmpPublish::~RSRtmpPublish()
+RSRtmpPublishTask::~RSRtmpPublishTask()
 {
-	cleanup();
+	Cleanup();
 }
 
-void RSRtmpPublish::cleanup()
+void RSRtmpPublishTask::Cleanup()
 {
 }
 
-void RSRtmpPublish::SetRtmpServer(const std::string &rtmp_server, const std::string &path, int index) {
+void RSRtmpPublishTask::SetRtmpServer(const std::string &rtmp_server, const std::string &path, int index) {
 	rtmp_url = rtmp_server + path + std::to_string(index);
 	std::cout << "rtmp_url " << rtmp_url << std::endl;
 }
 
-int RSRtmpPublish::ConnectRtmpServer() {
+int RSRtmpPublishTask::ConnectRtmpServer() {
 	// connect rtmp context
     rtmp = srs_rtmp_create(rtmp_url.c_str());
     
@@ -86,12 +82,12 @@ rtmp_destroy:
 //#undef srs_human_trace
 //#define srs_human_trace(x...) do {} while(0)
 
-void RSRtmpPublish::PublishStream() {
+void RSRtmpPublishTask::PublishStream() {
 	int64_t count = 0;
 
 	while (!ShouldStop()) {
 		std::shared_ptr<RSAVFramePacket> avdata(Input());
-        if (avdata->IsInvalidForEOF()) {
+        if (!avdata) {
             goto rtmp_destroy;
         }
 		AVPacket *pkt = avdata->packet_;
@@ -138,4 +134,17 @@ rtmp_destroy:
     srs_rtmp_destroy(rtmp);
 }
 
-#endif //__RS_RTMP_PUBLISH_H__
+
+void RSRtmpPublishTask::Run() {
+    if (!ConnectRtmpServer()) {
+        PublishStream();
+    } else {
+        std::cout << "ConnectRtmpServer Failed." << std::endl;
+    }
+
+	FinishTaskChain();
+	OutputDateTime();
+    std::cout << "RSRtmpPublishTask::Run exited." << std::endl;
+}
+
+#endif //__RS_RTMP_PUBLISH_TASK_H__

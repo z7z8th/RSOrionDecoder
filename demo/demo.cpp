@@ -18,14 +18,14 @@ int main()
     std::string vSrcArray[] = {
 		//"/home/bob/Videos/test/ffmpeg/test.mp4",
 		"/home/bob/Videos/test/1-muddy-puddle.mp4",
-/* 		"/home/bob/Videos/test/2-mr-dinasour.mp4",
+ 		"/home/bob/Videos/test/2-mr-dinasour.mp4",
 		"/home/bob/Videos/test/3-polly-parrot.mp4",
 		"/home/bob/Videos/test/4-best-friend.mp4",
 
 		"/home/bob/Videos/test/5-hide-and-seek.mp4",
 		"/home/bob/Videos/test/6-the-playgroup.mp4",
 		"/home/bob/Videos/test/7-mummy-pig-at-work.mp4",
-		"/home/bob/Videos/test/8-camping.mp4", */
+		"/home/bob/Videos/test/8-camping.mp4",
     };
 	for (auto vsrc : vSrcArray) {
 		procMgr.AddVideoSource(vsrc);

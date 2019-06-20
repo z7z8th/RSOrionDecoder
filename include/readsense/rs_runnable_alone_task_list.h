@@ -21,6 +21,9 @@ public:
 	void Push(const T&& t)	{ task_list_.Push(t); }
 	void Push(const T& t)	{ task_list_.Push(t); }
 
+	/* make Clear public to clear next_task queue */
+	void Clear() { task_list_.Clear(); }
+
 	virtual void Run() = 0;
 	virtual void SetSpNextTask(std::shared_ptr<CRunnableAloneTaskList<T>> \
 							   sp_next_task);
@@ -28,8 +31,6 @@ public:
 protected:
 	T _Pop() { return std::move(task_list_.Pop()); }
 	T _Peek() { return std::move(task_list_.Peek()); }
-
-	void Clear() { task_list_.Clear(); }
 
 	CRunnableAloneTaskList(const CRunnableAloneTaskList&) = delete;
 	CRunnableAloneTaskList& operator=(const CRunnableAloneTaskList&) = delete;
