@@ -13,7 +13,7 @@
 #include "rs_date.h"
 
 class RSDumpFramesTask : /* public RSDumpFrames, */
-	public RSChainedIOTask<spRSAVFramePacket>
+	public RSChainedIOTask<spRSAVEvent>
 {
 public:
 	RSDumpFramesTask(const std::string &prefix, const std::string &format);
@@ -56,22 +56,28 @@ std::string RSDumpFramesTask::GetOutputFileName(const std::string &mediaSrc){
 }
 
 void RSDumpFramesTask::Run() {
+	spRSAVFrame frame;
+	spRSAVPacket packet;
+	int ret = -1;
 	std::ofstream of;
 	while (!stop_flag_) {
-		std::shared_ptr<RSAVFramePacket> avdata(Input());
-		if (!avdata) {
+		spRSAVEvent avevent(Input());
+		if (avevent->IsExitEvent() || avevent->IsAbortEvent()) {
+			ret = avevent->IsAbortEvent() ? -1 : 0;
 			goto done;
 		}
+		frame = avevent->GetFrame();
+		packet = avevent->GetPacket();
 		if (!of.is_open()) {
-			if (avdata->frame_)
-				format_ = avdata->FramePixelFormat();
-			ofname_ = GetOutputFileName(avdata->src_);
+			if (frame)
+				format_ = frame->PixelFormat();
+			ofname_ = GetOutputFileName(frame->info_.src_);
 			std::cout << std::endl << "dump frames to " << ofname_ << std::endl;
 			if (!discardData_) {
 				std::cout << "how to play:\n";
-				if (avdata->frame_)
-					std::cout << "\tffplay -f rawvideo -pix_fmt " << format_ << " -s " << avdata->frame_->width << "x" << avdata->frame_->height << " " << ofname_ << std::endl;
-				else if (avdata->packet_)
+				if (frame)
+					std::cout << "\tffplay -f rawvideo -pix_fmt " << format_ << " -s " << frame->frame_->width << "x" << frame->frame_->height << " " << ofname_ << std::endl;
+				else if (packet)
 					std::cout << "\tffplay "<< ofname_ << std::endl;
 				std::cout << std::endl;
 			}
@@ -82,9 +88,8 @@ void RSDumpFramesTask::Run() {
 		}
 
 #warning get buffer for frame
-		if (avdata->frame_) {
-			int ret;
-			AVFrame *tmp_frame = avdata->frame_;
+		if (frame) {
+			AVFrame *tmp_frame = frame->frame_;
 			int size = av_image_get_buffer_size(static_cast<enum AVPixelFormat>(tmp_frame->format), tmp_frame->width,
 											tmp_frame->height, 1);
 			uint8 *buffer = static_cast<uint8 *>(av_malloc(size));
@@ -107,17 +112,17 @@ void RSDumpFramesTask::Run() {
 			if (!of)
 				std::cout << "write " << static_cast<void *>(buffer) << " size " << size << " to file error." << std::endl;
 			av_freep(&buffer);
-		} else if (avdata->packet_) {
+		} else if (packet) {
 			//std::cout << "dump packet" <<std::endl;
-			of.write(reinterpret_cast<const char *>(avdata->packet_->data), avdata->packet_->size);
+			of.write(reinterpret_cast<const char *>(packet->packet_->data), packet->packet_->size);
 		}
 
-		Output(std::move(avdata));
+		Output(std::move(avevent));
 	}
 
 fail:
 done:
-	FinishTaskChain();
+	FinishTaskChain(ret);
     OutputDateTime();
 	std::cout << "RSDumpFramesTask::Run exited." << std::endl;
 }

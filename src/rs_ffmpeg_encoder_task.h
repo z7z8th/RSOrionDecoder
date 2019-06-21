@@ -9,7 +9,7 @@
 #include "rs_chained_io_if.h"
 
 class RSFFMpegEncoderTask : 
-    public RSChainedIOTask<spRSAVFramePacket>
+    public RSChainedIOTask<spRSAVEvent>
 {
 public:
 	RSFFMpegEncoderTask();
@@ -17,7 +17,7 @@ public:
 protected:
 	virtual void Run();
 public:
-	void	Init();
+	int	Init();
 	int		Encode();
 	int		GetCodec();
 
@@ -54,11 +54,12 @@ RSFFMpegEncoderTask::~RSFFMpegEncoderTask()
 	cleanup();
 }
 
-void RSFFMpegEncoderTask::Init()
+int RSFFMpegEncoderTask::Init()
 {
 /* 	av_register_all();
 	avcodec_register_all();
  */
+    return 0;
 }
 
 void RSFFMpegEncoderTask::cleanup()
@@ -171,18 +172,21 @@ int RSFFMpegEncoderTask::encode_write(AVCodecContext *avctx, AVFrame *frame, FIL
             break;
 
         enc_pkt.stream_index = 0;
-        if (enc_pkt.pts == AV_NOPTS_VALUE)
+        if (!sw_frame)
+            fprintf(stderr, "null sw_frame, abort and flushing?\n");
+        if (enc_pkt.pts == AV_NOPTS_VALUE && sw_frame)
             enc_pkt.pts = sw_frame->pts;
-        if (enc_pkt.dts == AV_NOPTS_VALUE)
+        if (enc_pkt.dts == AV_NOPTS_VALUE && sw_frame)
             enc_pkt.dts = sw_frame->pkt_dts;
         if (fout)
             ret = fwrite(enc_pkt.data, enc_pkt.size, 1, fout);
-        std::shared_ptr<RSAVFramePacket> avpacket(new RSAVFramePacket);
-        avpacket->AllocPacket().PacketMoveRefFrom(&enc_pkt);
-        avpacket->src_ = src_;
-        avpacket->fps_ = fps_;
-        avpacket->time_base = time_base_;
-        Output(avpacket);
+        RSAVPacket *avpacket = new RSAVPacket;
+        avpacket->AllocPacket().MoveRefFrom(&enc_pkt);
+        avpacket->info_.src_ = src_;
+        avpacket->info_.fps_ = fps_;
+        avpacket->info_.time_base = time_base_;
+        spRSAVEvent avevent = std::make_shared<spRSAVEvent::element_type>(avpacket);
+        Output(std::move(avevent));
     }
 
 end:
@@ -192,7 +196,7 @@ end:
 
 
 int RSFFMpegEncoderTask::Encode() {
-    int err;
+    int err = -1;
     // int size   = width_ * height_;
     FILE *fout = NULL;
 
@@ -221,13 +225,15 @@ int RSFFMpegEncoderTask::Encode() {
         if ((err = fread((uint8_t*)(sw_frame->data[1]), size/2, 1, fin)) <= 0)
             break;
         */
-        std::shared_ptr<RSAVFramePacket> avdata = Input();
-        if (!avdata) {
-            goto close;
-        }
-        fps_ = avdata->fps_;
-        time_base_ = avdata->time_base;
-        avdata->FrameMoveRefTo(sw_frame);
+        spRSAVEvent avevent(Input());
+        if (avevent->IsExitEvent() || avevent->IsAbortEvent()) {
+			err = avevent->IsAbortEvent() ? -1 : 0;
+			goto close;
+		}
+        spRSAVFrame frame = avevent->GetFrame();
+        fps_ = frame->info_.fps_;
+        time_base_ = frame->info_.time_base;
+        frame->MoveRefTo(sw_frame);
 
         //printf("encode frame \n");
 
@@ -239,6 +245,7 @@ int RSFFMpegEncoderTask::Encode() {
             fprintf(stderr, "Error code: %s.\n", av_err2str(err));
             goto close;
         }
+        
         if (!hw_frame->hw_frames_ctx) {
             err = AVERROR(ENOMEM);
             goto close;
@@ -248,11 +255,11 @@ int RSFFMpegEncoderTask::Encode() {
                     "Error code: %s.\n", av_err2str(err));
             goto close;
         }
-
         if ((err = (encode_write(avctx, hw_frame, fout))) < 0) {
             fprintf(stderr, "Failed to encode.\n");
             goto close;
         }
+
         av_frame_free(&hw_frame);
         av_frame_free(&sw_frame);
     }
@@ -274,21 +281,31 @@ close:
 }
 
 void RSFFMpegEncoderTask::Run() {
+    int ret = -1;
     {
-        std::shared_ptr<RSAVFramePacket> avdata = _Peek();
-        width_ = avdata->frame_->width;
-        height_ = avdata->frame_->height;
-        src_ = avdata->src_;
+        spRSAVEvent avevent(_Peek());
+        if (avevent->IsExitEvent() || avevent->IsAbortEvent()) {
+			ret = avevent->IsAbortEvent() ? -1 : 0;
+			goto done;
+		}
+        spRSAVFrame frame = avevent->GetFrame();
+        width_ = frame->frame_->width;
+        height_ = frame->frame_->height;
+        src_ = frame->info_.src_;
     }
     
-    Init();
-    if (!GetCodec()) {
-        Encode();
+    if ((ret = Init()) !=0) {
+        std::cout << "RSFFMpegEncoderTask Init failed." << std::endl;
+        goto done;
+    }
+    if (!(ret = GetCodec())) {
+        ret = Encode();
     } else {
-        std::cout << "Get encode codec failed.\n" << std::endl;
+        std::cout << "RSFFMpegEncoderTask::GetCodec failed.\n" << std::endl;
     }
 
-	FinishTaskChain();
+done:
+	FinishTaskChain(ret);
     OutputDateTime();
     std::cout << "RSFFMpegEncoderTaskTask::Run exited." << std::endl;
 }

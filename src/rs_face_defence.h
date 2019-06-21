@@ -107,25 +107,22 @@ int RSFaceDefence::start()
 
 int RSFaceDefence::stop()
 {
-
-
-#if 0
-	/* Stop in reverse order, otherwise will starve */
-	sp_rtmp_publish_task_->Stop();
-	if (DUMP_ENCODED_PACKETS)
-		sp_dump_encoded_task_->Stop();
-	sp_ffmpeg_encoder_task_->Stop();
+#if 1
+	sp_ffmpeg_decoder_task_->Stop();
+	if (DUMP_DECODED_FRAMES)
+		sp_dump_decoded_task_->Stop();
 /*
 	sp_image_upload_task_->Stop();
  	sp_face_track_task_->Stop();
- */
-	if (DUMP_DECODED_FRAMES)
-		sp_dump_decoded_task_->Stop();
+ */	
+	sp_ffmpeg_encoder_task_->Stop();
+	if (DUMP_ENCODED_PACKETS)
+		sp_dump_encoded_task_->Stop();
+	sp_rtmp_publish_task_->Stop();
+#else
+	/* Stop decoder, it will send abort frame to chained tasks to end them */
 	sp_ffmpeg_decoder_task_->Stop();
 #endif
-
-	/* Stop decoder, it will send empty frame to chained tasks to end them */
-	sp_ffmpeg_decoder_task_->Stop();
 
 	sp_ffmpeg_decoder_task_->Join();
 	if (DUMP_DECODED_FRAMES)

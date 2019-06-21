@@ -15,7 +15,7 @@
 #define DEFAULT_DECODE_MODE HARDWARE_DECODE
 
 class RSFFMpegDecoderTask : 
-	public RSChainedIOTask<spRSAVFramePacket>
+	public RSChainedIOTask<spRSAVEvent>
 {
 public:
 	RSFFMpegDecoderTask();
@@ -354,11 +354,13 @@ int RSFFMpegDecoderTask::Decode()
 
 	while (!ShouldStop()) {
 		//av_init_packet(pPacket_);
-		int iRet = av_read_frame(pAVFormatCtx_, pPacket_);
-		hlogi("av_read_frame, iRet: 0x%x", iRet);
-		if (iRet != 0) {
-			if (GetStreamType() == STREAM_TYPE_FILE)
-				goto done;
+		ret = av_read_frame(pAVFormatCtx_, pPacket_);
+		hlogi("av_read_frame, ret: 0x%x", ret);
+		if (ret != 0) {
+			if (GetStreamType() == STREAM_TYPE_FILE) {
+				ret = 0;
+				goto fail;
+			}
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(GetRetryDelayMS()));
 			continue;
@@ -396,22 +398,23 @@ int RSFFMpegDecoderTask::Decode()
 				if (tmp_frame->pkt_dts == AV_NOPTS_VALUE)
 					tmp_frame->pkt_dts = pPacket_->dts;
 				//printf("push frame fmt %d size %dx%d\n", tmp_frame->format, tmp_frame->width, tmp_frame->height);
-				std::shared_ptr<RSAVFramePacket> avframe(new RSAVFramePacket());
-				avframe->AllocFrame().FrameMoveRefFrom(tmp_frame);
-				avframe->src_ = hMedia_.src;
-				avframe->fps_ = fps;
-				avframe->time_base = video_time_base;
-				Output(avframe);
+				RSAVFrame *avframe = new RSAVFrame;
+				avframe->AllocFrame().MoveRefFrom(tmp_frame);
+				avframe->info_.src_ = hMedia_.src;
+				avframe->info_.fps_ = fps;
+				avframe->info_.time_base = video_time_base;
+				spRSAVEvent avevent = std::make_shared<spRSAVEvent::element_type>(avframe);
+
+				Output(std::move(avevent));
 			}
 		}
 
 		av_packet_unref(pPacket_);
 	}
-done:
-	return 0;
 
+	ret = 0;
 fail:
-	return -1;
+	return ret;
 }
 
 int RSFFMpegDecoderTask::GetVideoSource()
@@ -476,18 +479,19 @@ int RSFFMpegDecoderTask::GetFps() {
 }
 
 void RSFFMpegDecoderTask::Run() {
-	if (Init()) {
+	int ret = -1;
+	if ((ret = Init()) != 0) {
 		hloge("Init fail.\n");
 		goto done;
 	}
-	if (!GetCodec()) {
-		Decode();
+	if (!(ret = GetCodec())) {
+		ret = Decode();
 	} else {
 		hloge("GetCodec failed.\n");
 		goto done;
 	}
 done:
-	FinishTaskChain();
+	FinishTaskChain(ret);
     OutputDateTime();
 	std::cout << "RSFFMpegDecoderTask::Run exited." << std::endl;
 	return;

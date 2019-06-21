@@ -69,6 +69,7 @@ CPPFLAGS += $(addprefix -I, $(INCDIRS))
 
 LIBDIRS += $(LIBDIR) $(DEPDIR)/lib /Users/cheewing/3rd/ffmpeg/lib $(SRC_ROOT_DIR)/../srs-librtmp/objs/lib/
 LDFLAGS += $(addprefix -L, $(LIBDIRS))
+LDFLAGS += -rdynamic
 ifeq ($(OS), Windows)
 	LDFLAGS += -static-libgcc -static-libstdc++
 endif
@@ -119,7 +120,7 @@ else
 ifeq ($(OS), Windows)
 	$(CXX) $(CXXFLAGS) $^ -o $(BINDIR)/$@.exe $(LDFLAGS)
 else
-	$(CXX) $(CXXFLAGS) $^ -o $(BINDIR)/$@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $^ -o $(BINDIR)/$@ $(LDFLAGS) -Wl,-Map=$(BINDIR)/$@.map
 endif
 endif
 

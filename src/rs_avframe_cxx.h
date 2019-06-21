@@ -7,19 +7,21 @@
 
 const int VIDEO_FALL_BACK_FPS = 25;
 
-class RSAVFramePacket {
+struct RSAVInfo {
+    std::string   src_;
+    AVRational    time_base = { 0, 0 };
+    int fps_ = VIDEO_FALL_BACK_FPS;
+};
+
+class RSAVFrame {
 public:
-    RSAVFramePacket() = default;
-    RSAVFramePacket(AVFrame* frame)
+    RSAVFrame() = default;
+    RSAVFrame(AVFrame* frame)
         : frame_(frame)
     {
     }
-    RSAVFramePacket(AVPacket* packet)
-        : packet_(packet)
-    {
-    }
     /*
-    RSAVFramePacket(int width, int height, enum AVPixelFormat format)
+    RSAVFrame(int width, int height, enum AVPixelFormat format)
     {
         frame_ = av_frame_alloc();
         frame_->width = width;
@@ -28,10 +30,9 @@ public:
         av_frame_get_buffer(frame_, 32);
     }
     */
-    ~RSAVFramePacket()
+    ~RSAVFrame()
     {
         av_frame_free(&frame_);
-        av_packet_free(&packet_);
     }
     /*
     AVFrame* operator->() const
@@ -50,44 +51,103 @@ public:
         frame_->linesize[1] = 0;
     }
     */
-    RSAVFramePacket& AllocFrame(){
+    RSAVFrame& AllocFrame(){
         frame_ = av_frame_alloc();
         return *this;
     }
-    RSAVFramePacket& AllocPacket(){
+    void MoveRefTo(AVFrame *dst) {
+        av_frame_move_ref(dst, frame_);
+    }
+    void MoveRefFrom(AVFrame *src) {
+        av_frame_move_ref(frame_, src);
+    }
+    std::string PixelFormat() {
+        if (frame_)
+            return std::string(av_get_pix_fmt_name(static_cast<enum AVPixelFormat>(frame_->format)));
+        return "NoFrame";
+    }
+
+    RSAVInfo info_;
+//protected:
+    AVFrame* frame_ = NULL;
+};
+using spRSAVFrame = std::shared_ptr<RSAVFrame>;
+
+class RSAVPacket {
+public:
+    RSAVPacket() = default;
+    RSAVPacket(AVPacket* packet)
+        : packet_(packet)
+    {
+    }
+    ~RSAVPacket()
+    {
+        av_packet_free(&packet_);
+    }
+    RSAVPacket& AllocPacket(){
         packet_ = av_packet_alloc();
         return *this;
     }
-    void FrameMoveRefTo(AVFrame *dst) {
-        av_frame_move_ref(dst, frame_);
-    }
-    void FrameMoveRefFrom(AVFrame *src) {
-        av_frame_move_ref(frame_, src);
-    }
-    void PacketMoveRefTo(AVPacket *dst) {
+    void MoveRefTo(AVPacket *dst) {
         av_packet_move_ref(dst, packet_);
     }
-    void PacketMoveRefFrom(AVPacket *src) {
+    void MoveRefFrom(AVPacket *src) {
         av_packet_move_ref(packet_, src);
     }
-    std::string FramePixelFormat() {
-        if (frame_)
-            return std::string(av_get_pix_fmt_name(static_cast<enum AVPixelFormat>(frame_->format)));
-        return "";
-    }
-    bool IsInvalidForEOF() {
-        return !frame_ && !packet_;
-    }
 
-    std::string src_;
-    int fps_ = VIDEO_FALL_BACK_FPS;
-    AVRational time_base = { 0, 0 };
+    RSAVInfo info_;
 
 //protected:
-    AVFrame* frame_ = NULL;
     AVPacket* packet_ = NULL;
 };
+using spRSAVPacket = std::shared_ptr<RSAVPacket>;
 
-using spRSAVFramePacket = std::shared_ptr<RSAVFramePacket>;
+struct RSAVEvent {
+    RSAVEvent() = default;
+    RSAVEvent(RSAVFrame *frame) {
+        evt_ = EVENT_FRAME;
+        data_ = std::shared_ptr<RSAVFrame>(frame);
+    }
+    RSAVEvent(RSAVPacket *packet) {
+        evt_ = EVENT_PACKET;
+        data_ = std::shared_ptr<RSAVPacket>(packet);
+    }
+    virtual ~RSAVEvent() {}
+    spRSAVFrame GetFrame() {
+        if (evt_ != EVENT_FRAME)
+            return nullptr;
+        return std::static_pointer_cast<RSAVFrame>(data_);
+    }
+    spRSAVPacket GetPacket() {
+        if (evt_ != EVENT_PACKET)
+            return nullptr;
+        return std::static_pointer_cast<RSAVPacket>(data_);
+    }
+/*
+    bool IsFrameEvent() {
+        return evt_ == EVENT_FRAME;
+    }
+    bool IsPacketEvent() {
+        return evt_ == EVENT_PACKET;
+    }
+*/
+    bool IsExitEvent() {
+        return evt_ == EVENT_EXIT;
+    }
+    bool IsAbortEvent() {
+        return evt_ == EVENT_ABORT;
+    }
+    enum EventType{
+        EVENT_NONE = 0,
+        EVENT_FRAME,
+        EVENT_PACKET,
+        EVENT_EXIT,
+        EVENT_ABORT,
+    };
+    enum EventType evt_ = EVENT_NONE;
+    std::shared_ptr<void> data_;
+};
+
+using spRSAVEvent = std::shared_ptr<RSAVEvent>;
 
 #endif //__RS_AVFRAME_H__

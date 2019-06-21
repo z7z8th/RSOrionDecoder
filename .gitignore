@@ -2,6 +2,7 @@
 *.d
 *~
 .*~
+*.map
 core
 default.log
 /.vscode/ipch

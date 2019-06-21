@@ -71,7 +71,7 @@ T CTaskQueue<T>::Peek() {
 	std::unique_lock<std::mutex> lock(mutex_);
 	empty_notify_.wait(lock, [this]() { return !this->block_queue_.empty(); });
 	T ret = block_queue_.back();
-	full_notify_.notify_one();
+	//full_notify_.notify_one();
 	return std::move(ret);
 }
 

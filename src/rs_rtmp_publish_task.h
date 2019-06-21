@@ -9,7 +9,7 @@
 #include "rs_chained_io_if.h"
 
 class RSRtmpPublishTask : 
-    public RSChainedIOTask<spRSAVFramePacket>
+    public RSChainedIOTask<spRSAVEvent>
 {
 public:
 	RSRtmpPublishTask();
@@ -18,7 +18,7 @@ public:
 protected:
     virtual void Run();
 	int		ConnectRtmpServer();
-	void    PublishStream();
+	int    PublishStream();
 private:
 	void	Cleanup();
 protected:
@@ -82,21 +82,25 @@ rtmp_destroy:
 //#undef srs_human_trace
 //#define srs_human_trace(x...) do {} while(0)
 
-void RSRtmpPublishTask::PublishStream() {
+int RSRtmpPublishTask::PublishStream() {
+    int ret = -1;
 	int64_t count = 0;
 
 	while (!ShouldStop()) {
-		std::shared_ptr<RSAVFramePacket> avdata(Input());
-        if (!avdata) {
-            goto rtmp_destroy;
-        }
-		AVPacket *pkt = avdata->packet_;
+		spRSAVEvent avevent(Input());
+        if (avevent->IsExitEvent() || avevent->IsAbortEvent()) {
+			ret = avevent->IsAbortEvent() ? -1 : 0;
+			goto rtmp_destroy;
+		}
+
+        spRSAVPacket packet = avevent->GetPacket();
+		AVPacket *pkt = packet->packet_;
         // send out the h264 packet over RTMP
-        int ret = srs_h264_write_raw_frames(rtmp,
+        ret = srs_h264_write_raw_frames(rtmp,
                                             reinterpret_cast<char *>(pkt->data),
                                             pkt->size,
-                                            pkt->dts*av_q2d(avdata->time_base)*1000,
-                                            pkt->pts*av_q2d(avdata->time_base)*1000);
+                                            pkt->dts*av_q2d(packet->info_.time_base)*1000,
+                                            pkt->pts*av_q2d(packet->info_.time_base)*1000);
         if (ret != 0) {
             #warning ignore duplicated sps and pps will lead to lag
             if (srs_h264_is_dvbsp_error(ret)) {
@@ -125,24 +129,25 @@ void RSRtmpPublishTask::PublishStream() {
 #endif
         // @remark, when use encode device, it not need to sleep.
         if (count++ == 9) {
-            usleep(1000 * 1000 * count / avdata->fps_);
+            usleep(1000 * 1000 * count / packet->info_.fps_);
             count = 0;
         }
-		Output(std::move(avdata));
+		Output(std::move(avevent));
 	}
 rtmp_destroy:
     srs_rtmp_destroy(rtmp);
+    return ret;
 }
 
-
 void RSRtmpPublishTask::Run() {
-    if (!ConnectRtmpServer()) {
-        PublishStream();
+    int ret = -1;
+    if (!(ret = ConnectRtmpServer())) {
+        ret = PublishStream();
     } else {
         std::cout << "ConnectRtmpServer Failed." << std::endl;
     }
 
-	FinishTaskChain();
+	FinishTaskChain(ret);
 	OutputDateTime();
     std::cout << "RSRtmpPublishTask::Run exited." << std::endl;
 }

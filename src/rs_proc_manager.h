@@ -53,6 +53,43 @@ public:
     std::size_t ProcCnt() {
         return childMap.size();
     }
+    void StartChildProcs() {
+        RegisterSignals();
+        for (std::size_t i=0; i<childMap.size(); i++) {
+        //for (auto& desc : childMap) {
+            auto &desc(childMap[i]);
+            desc.childIndex = i;
+            if (DEBUG_BY_NO_FORK)
+                desc.pid = 0;
+            else
+                desc.pid = fork();
+            if (desc.pid == 0) {
+                isChild = true;
+                thisProcDesc = &desc;
+                ChildProcRoutine(desc);
+                return;
+            }
+        }
+    }
+
+    void EventLoop() {
+        #warning dummy Manager Loop, should handle socket event from child
+        while (!exiting) {
+            if (sigCHLDCnt != 0)
+                SigHandler_CHLD_nx();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1*1000));
+        }
+            
+        if (isChild) {
+            ExitChildHimself();
+        } else {
+            ExitChildrenAndManager();
+        }
+    }
+    void DebugByNoFork(bool no_fork) {
+        DEBUG_BY_NO_FORK = no_fork;
+    }
+protected:
     void ChildProcRoutine(RSChildProcDesc &desc) {
             if (exiting)
                 return;
@@ -72,22 +109,6 @@ public:
             //rsOrionDecoderInit(&rsHandle);
             std::cout << "child process [" << desc.childIndex << "] pid " << getpid() << " started" << std::endl;
     }
-    void StartChildProcs() {
-        RegisterSignals();
-        for (std::size_t i=0; i<childMap.size(); i++) {
-        //for (auto& desc : childMap) {
-            auto &desc(childMap[i]);
-            desc.childIndex = i;
-            desc.pid = fork();
-            if (desc.pid == 0) {
-                isChild = true;
-                thisProcDesc = &desc;
-                ChildProcRoutine(desc);
-                return;
-            }
-        }
-    }
-
     void ExitChildrenAndManager() {
         RSProcManager& procMgr = GetInstance();
         for (auto& desc : procMgr.childMap) {
@@ -108,21 +129,6 @@ public:
         RSProcManager& procMgr = GetInstance();
         rsOrionDecoderStop(procMgr.thisProcDesc->rsOrionHandle);
         ::exit(SIGTERM);
-    }
-
-    void EventLoop() {
-        #warning dummy Manager Loop, should handle socket event from child
-        while (!exiting) {
-            if (sigCHLDCnt != 0)
-                SigHandler_CHLD_nx();
-            std::this_thread::sleep_for(std::chrono::milliseconds(1*1000));
-        }
-            
-        if (isChild) {
-            ExitChildHimself();
-        } else {
-            ExitChildrenAndManager();
-        }
     }
 
     RSChildProcDesc* FindChildDesc(pid_t pid) {
@@ -204,6 +210,8 @@ protected:
     std::atomic<bool>  exiting { false };
     std::atomic<bool>  restartChild { false };
     std::atomic<int>   sigCHLDCnt { 0 };
+
+    bool   DEBUG_BY_NO_FORK;
 };
 
 #endif // __RS_PATH_H__
