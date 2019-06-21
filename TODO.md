@@ -1,8 +1,8 @@
 1. [x] ~~CPU usage too high when reach end of file, HThread::doTask shouldn't be empty~~
-2. [ ] RTMP publish ignore sps pps caused lag
+2. [x] RTMP publish ignore sps pps caused lag, comment out return statement after checking sps/pps duplicated in srs-librtmp
 3. [ ] CUVID hardware accel decode/encode
 4. [ ] Function for convert RSAVFrame to RSFrame, format NV12 to BGR24
-5. [x] ~~handle child process death, added RSProcManager to manage child by signal SIGCHLD and SIGTERM/SIGINT~~
+5. [x] ~~Handle child process death, added RSProcManager to manage child by signal SIGCHLD and SIGTERM/SIGINT~~
 6. [ ] Audio support
 7. [x] std::cout and printf mixed, this is hard to eliminate, since ffmpeg and srs uses a lot of C styles.
 8. [ ] Resource leak check
