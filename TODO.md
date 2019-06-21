@@ -9,3 +9,4 @@
 9. [ ] Master process communicate with child for info exchange, by socket?
 10. [x] ~~Get frame rate from input file for RTMP publish~~
 11. [x] ~~Handle signal TERM INT to stop gracefully~~
+12. [ ] Limit HW encoder output bit rate, default rate too high roughly 70Mbits/s.
