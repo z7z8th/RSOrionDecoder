@@ -44,6 +44,7 @@ int register_fault_signals()
         perror("sigaction SIGABRT");
         return -1;
     }
+    return 0;
 }
 
 #endif // __RS_FAULT_H__

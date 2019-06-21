@@ -30,10 +30,11 @@ endif
 endif
 
 #CFLAGS += -g -Wall -O3
-CFLAGS += -g -O0 -Wall # -w
+CFLAGS += -g -Wall
 ifeq ($(ENABLE_SHARED),true)
 	CFLAGS += -shared -fPIC -fvisibility=hidden
 endif
+
 DEPFLAGS += -MMD -MP
 CXXFLAGS += $(CFLAGS) $(DEPFLAGS) -std=c++11
 ARFLAGS := cr
@@ -97,9 +98,14 @@ $(info CFLAGS=$(CFLAGS))
 $(info CXXFLAGS=$(CXXFLAGS))
 $(info LDFLAGS=$(LDFLAGS))
 
-default: all
+debug: CFLAGS += -O0
+release: CFLAGS += -O2
+all: release
 
-all: prepare $(TARGET)
+debug: default
+release: default
+
+default: prepare $(TARGET)
 
 prepare:
 	$(MKDIR) $(BINDIR) $(LIBDIR)
@@ -146,6 +152,6 @@ undist:
 rebuild: clean
 	+make all
 
-.PHONY: default all prepare clean install uninstall dist undist rebuild
+.PHONY: default all debug release prepare clean install uninstall dist undist rebuild
 
 -include $(DEPS)

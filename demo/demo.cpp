@@ -19,7 +19,8 @@ int main()
     register_fault_signals();
     procMgr.DebugByNoFork(true);
     std::string vSrcArray[] = {
-		"/home/bob/Videos/test/test.mp4",
+        // "/home/bob/Videos/test/test-1.mp4"
+		"/home/bob/Videos/test/test-2.mkv",
 /* 		"/home/bob/Videos/test/1-muddy-puddle.mp4",
  		"/home/bob/Videos/test/2-mr-dinasour.mp4",
 		"/home/bob/Videos/test/3-polly-parrot.mp4",
