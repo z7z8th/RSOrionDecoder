@@ -84,7 +84,9 @@ rtmp_destroy:
 
 int RSRtmpPublishTask::PublishStream() {
     int ret = -1;
+    int count_to_buffer = 50;
 	int64_t count = 0;
+    int fps;
 
 	while (!ShouldStop()) {
 		spRSAVEvent avevent(Input());
@@ -95,14 +97,29 @@ int RSRtmpPublishTask::PublishStream() {
 
         spRSAVPacket packet = avevent->GetPacket();
 		AVPacket *pkt = packet->packet_;
+        fps = packet->info_.fps_;
+
         // send out the h264 packet over RTMP
+        try {
         ret = srs_h264_write_raw_frames(rtmp,
                                             reinterpret_cast<char *>(pkt->data),
                                             pkt->size,
                                             pkt->dts*av_q2d(packet->info_.time_base)*1000,
                                             pkt->pts*av_q2d(packet->info_.time_base)*1000);
+        } catch (const std::overflow_error& e) {
+            // this executes if f() throws std::overflow_error (same type rule)
+        } catch (const std::runtime_error& e) {
+            // this executes if f() throws std::underflow_error (base class rule)
+        } catch (const std::exception& e) {
+            // this executes if f() throws std::logic_error (base class rule)
+        } catch (...) {
+            // this executes if f() throws std::string or int or any other unrelated type
+            srs_human_trace("*** exception when srs_h264_write_raw_frames");
+            ret = 0;
+        }
+
         if (ret != 0) {
-            #warning ignore duplicated sps and pps will lead to lag
+#warning ignore duplicated sps and pps will lead to lag
             if (srs_h264_is_dvbsp_error(ret)) {
                 srs_human_trace("ignore drop video error, code=%d", ret);
             } else if (srs_h264_is_duplicated_sps_error(ret)) {
@@ -127,9 +144,11 @@ int RSRtmpPublishTask::PublishStream() {
             (nut == 7? "SPS":(nut == 8? "PPS":(nut == 5? "I":(nut == 1? "P":(nut == 9? "AUD":(nut == 6? "SEI":"Unknown")))))) */
 			);
 #endif
-        // @remark, when use encode device, it not need to sleep.
-        if (count++ == 9) {
-            usleep(1000 * 1000 * count / packet->info_.fps_);
+        //fprintf(stderr, ".");
+        // @remark, when use encode device, not need to sleep.
+        // Really?
+        if (++count >= count_to_buffer) {
+            usleep(1000 * 1000 * count / fps * 0.9f);
             count = 0;
         }
 		Output(std::move(avevent));

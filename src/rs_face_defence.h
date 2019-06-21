@@ -107,35 +107,27 @@ int RSFaceDefence::start()
 
 int RSFaceDefence::stop()
 {
-#if 1
 	sp_ffmpeg_decoder_task_->Stop();
-	if (DUMP_DECODED_FRAMES)
+	sp_ffmpeg_decoder_task_->Join();
+	if (DUMP_DECODED_FRAMES) {
 		sp_dump_decoded_task_->Stop();
+		sp_dump_decoded_task_->Join();
+	}
 /*
 	sp_image_upload_task_->Stop();
+	sp_image_upload_task_->Join();
  	sp_face_track_task_->Stop();
+ 	sp_face_track_task_->Join();
  */	
 	sp_ffmpeg_encoder_task_->Stop();
-	if (DUMP_ENCODED_PACKETS)
-		sp_dump_encoded_task_->Stop();
-	sp_rtmp_publish_task_->Stop();
-#else
-	/* Stop decoder, it will send abort frame to chained tasks to end them */
-	sp_ffmpeg_decoder_task_->Stop();
-#endif
-
-	sp_ffmpeg_decoder_task_->Join();
-	if (DUMP_DECODED_FRAMES)
-		sp_dump_decoded_task_->Join();
-/*
-	sp_image_upload_task_->Join();
- 	sp_face_track_task_->Join();
- */
 	sp_ffmpeg_encoder_task_->Join();
-	if (DUMP_ENCODED_PACKETS)
+	if (DUMP_ENCODED_PACKETS) {
+		sp_dump_encoded_task_->Stop();
 		sp_dump_encoded_task_->Join();
+	}
+	sp_rtmp_publish_task_->Stop();
 	sp_rtmp_publish_task_->Join();
-	
+
 	HThread::stop();
 	return 0;
 }

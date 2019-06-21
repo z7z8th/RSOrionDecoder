@@ -130,6 +130,8 @@ int RSFFMpegEncoderTask::GetCodec() {
     avctx->framerate = (AVRational){25, 1};
     avctx->sample_aspect_ratio = (AVRational){1, 1};
     avctx->pix_fmt   = AV_PIX_FMT_VAAPI;
+    avctx->bit_rate = 8000000;  // 8 Mbits/s for 1080p
+    avctx->bit_rate_tolerance = 10000000;  // 10 Mbits
 
     /* set hw_frames_ctx for encoder's AVCodecContext */
     if ((err = set_hwframe_ctx(avctx, hw_device_ctx)) < 0) {
@@ -174,6 +176,7 @@ int RSFFMpegEncoderTask::encode_write(AVCodecContext *avctx, AVFrame *frame, FIL
         enc_pkt.stream_index = 0;
         if (!sw_frame)
             fprintf(stderr, "null sw_frame, abort and flushing?\n");
+#warning possibly wrong pts/dts
         if (enc_pkt.pts == AV_NOPTS_VALUE && sw_frame)
             enc_pkt.pts = sw_frame->pts;
         if (enc_pkt.dts == AV_NOPTS_VALUE && sw_frame)
