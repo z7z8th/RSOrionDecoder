@@ -28,6 +28,8 @@
                     "text": "show follow-fork-mode"
                 },{
                     "text": "show detach-on-fork"
+                },{
+                    "text" : "-gdb-set substitute-path /build/glibc-vjB4T1/glibc-2.28 ${workspaceFolder}/../glibc-2.28"
                 }
             ],
             "preLaunchTask": "make all",

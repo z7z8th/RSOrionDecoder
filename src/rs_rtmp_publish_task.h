@@ -86,12 +86,13 @@ int RSRtmpPublishTask::PublishStream() {
     int ret = -1;
     int count_to_buffer = 50;
 	int64_t count = 0;
-    int fps;
+    float fps;
 
 	while (!ShouldStop()) {
 		spRSAVEvent avevent(Input());
         if (avevent->IsExitEvent() || avevent->IsAbortEvent()) {
 			ret = avevent->IsAbortEvent() ? -1 : 0;
+            SetAbortTaskChainFlag();
 			goto rtmp_destroy;
 		}
 
@@ -100,23 +101,14 @@ int RSRtmpPublishTask::PublishStream() {
         fps = packet->info_.fps_;
 
         // send out the h264 packet over RTMP
-        try {
+        /* Broken pip is a signal, can't be caught as exception
+         * Need to ignore SIGPIPE signal by signal(SIGPIPE, SIG_IGN);
+         */
         ret = srs_h264_write_raw_frames(rtmp,
                                             reinterpret_cast<char *>(pkt->data),
                                             pkt->size,
                                             pkt->dts*av_q2d(packet->info_.time_base)*1000,
                                             pkt->pts*av_q2d(packet->info_.time_base)*1000);
-        } catch (const std::overflow_error& e) {
-            // this executes if f() throws std::overflow_error (same type rule)
-        } catch (const std::runtime_error& e) {
-            // this executes if f() throws std::underflow_error (base class rule)
-        } catch (const std::exception& e) {
-            // this executes if f() throws std::logic_error (base class rule)
-        } catch (...) {
-            // this executes if f() throws std::string or int or any other unrelated type
-            srs_human_trace("*** exception when srs_h264_write_raw_frames");
-            ret = 0;
-        }
 
         if (ret != 0) {
 #warning ignore duplicated sps and pps will lead to lag
@@ -145,10 +137,10 @@ int RSRtmpPublishTask::PublishStream() {
 			);
 #endif
         //fprintf(stderr, ".");
-        // @remark, when use encode device, not need to sleep.
+        // @remark, when use encode device, no need to sleep.
         // Really?
         if (++count >= count_to_buffer) {
-            usleep(1000 * 1000 * count / fps * 0.9f);
+            usleep(1000 * 1000 * count / fps * 0.95f);
             count = 0;
         }
 		Output(std::move(avevent));
@@ -160,8 +152,11 @@ rtmp_destroy:
 
 void RSRtmpPublishTask::Run() {
     int ret = -1;
+restart:
     if (!(ret = ConnectRtmpServer())) {
         ret = PublishStream();
+        if (ret == 1009 /* ERROR_SOCKET_WRITE */)
+            goto restart;
     } else {
         std::cout << "ConnectRtmpServer Failed." << std::endl;
     }

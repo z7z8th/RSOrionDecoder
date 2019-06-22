@@ -2,11 +2,13 @@
 set follow-fork-mode child
 set detach-on-fork off
 
-break main
-break demo.cpp:70
-break demo.cpp:78
+# the glibc source is from some version debian testing
+set substitute-path /build/glibc-vjB4T1/glibc-2.28 ../glibc-2.28
 
-break RSFaceTrack::SetFaceFilterPolicy
-break RSFaceDefence::start
+# break fprintf # for test source path substitute
+break main
+
+# break RSFaceTrack::SetFaceFilterPolicy
+# break RSFaceDefence::start
 
 info break

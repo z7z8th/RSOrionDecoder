@@ -1,6 +1,5 @@
 #!/bin/bash
 
-killall vlc
 killall srs
 
 sleep 1
@@ -11,9 +10,3 @@ cd $SRS_DIR
 ./objs/srs -c conf/rtmp.conf &
 sleep 2
 cd -
-
-for ((i=1; i<=2; i++)); do
-    for ((j=1; j<=4; j++)); do
-        vlc rtmp://127.0.0.1:1935/live/$i/$j &
-    done
-done

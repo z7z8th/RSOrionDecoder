@@ -30,6 +30,9 @@ void fault_handler(int sig, siginfo_t *info, void *ucontext)
 
 int register_fault_signals()
 {
+    /* ignore broken pipe, should be handled by return value. */
+    signal(SIGPIPE, SIG_IGN);
+
     struct sigaction sa;
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = fault_handler;
