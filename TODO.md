@@ -10,4 +10,5 @@
 10. [x] ~~Get frame rate from input file for RTMP publish~~
 11. [x] ~~Handle signal TERM INT to stop gracefully~~
 12. [ ] Limit HW encoder output bit rate, default rate too high roughly 70Mbits/s.
-13. [ ] writev() will cause uncaughtable exception if write more than about 5 seconds buffer to rtmp server.
+13. [x] ~~writev() will cause uncaughtable exception if write more than about 5 seconds buffer to rtmp server, solved by ignore SIGPIPE and restart rtmp publish~~
+14. [ ] Abort whole task chain when some task in the middle of the chain exit.
