@@ -92,3 +92,7 @@ Test (Video file too large for git)
 3. Result
     * mpv plays smoothly with the later 6 videos, average bit rate at ~15Mbps or ~9Mbps.
     * there's some lag with the first 2 videos, average bit rate at ~20Mbps.
+
+TODO List
+===
+[TODO.md](TODO.md)
