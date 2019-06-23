@@ -23,7 +23,11 @@ RTMP Publisher
 
 Build
 ===
-1. build srs RTMP server
+1. prerequisite
+    ```shell
+    apt install build-essential ffmpeg libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev mpv vlc
+    ```
+2. build srs RTMP server
     ```shell
     mkdir ~/src
     cd ~/src
@@ -32,7 +36,7 @@ Build
     ./configure --without-http-callback --without-ssl && make -j14
     # ./objs/srs -c conf/rtmp.conf
     ```
-2. export srs-librtmp and build
+3. export srs-librtmp and build
     ```shell
     cd ~/src/srs/trunk
     ./configure --export-librtmp-project=$HOME/src/srs-librtmp
@@ -43,7 +47,7 @@ Build
     make -j14
     # research/librtmp/objs/srs_h264_raw_publish ../RSOrionDecoder/encoded-test.h264.tid_xxxxxxxxx rtmp://127.0.0.1:1935/live/1 25
     ```
-3. build RSOrionDecoder (depends on srs-librtmp)
+4. build RSOrionDecoder (depends on srs-librtmp)
     ```shell
     cd ~/src
     git clone https://github.com/z7z8th/RSOrionDecoder
