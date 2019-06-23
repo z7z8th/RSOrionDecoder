@@ -213,7 +213,7 @@ enum AVPixelFormat RSFFMpegDecoderTask::get_hw_format(AVCodecContext *ctx,
             return *p;
     }
 
-    fprintf(stderr, "Failed to get HW surface format.\n");
+    fprintf(stderr, "Failed to get HW surface format for AVCodecContext %p.\n", ctx);
 	exit(1);
     return AV_PIX_FMT_NONE;
 }
@@ -301,6 +301,8 @@ int RSFFMpegDecoderTask::GetCodec()
 		hloge("avcodec_alloc_context3!");
 		return -60;
 	}
+
+	printf("AVCodecContext %p for %s\n", pAVCodecCtx_, hMedia_.src.c_str());
 
 	iRet = avcodec_parameters_to_context(pAVCodecCtx_, codecpar);
 	if (iRet != 0) {

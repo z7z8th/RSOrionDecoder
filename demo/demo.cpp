@@ -16,13 +16,9 @@ static RSProcManager& procMgr = RSProcManager::GetInstance();
 
 int main()
 {
-    fprintf(stderr, "hello");
     register_fault_signals();
-    procMgr.DebugByNoFork(true);
-    std::string vSrcArray[] = {
-        "/home/bob/Videos/test/test-1.mp4",
-        "/home/bob/Videos/test/test-2.mkv",
-        /*
+    //procMgr.DebugByNoFork(true);
+    std::string vSrcArray_bitrate_800kbps[] = {
         "/home/bob/Videos/test/1-muddy-puddle.mp4",
  		"/home/bob/Videos/test/2-mr-dinasour.mp4",
 		"/home/bob/Videos/test/3-polly-parrot.mp4",
@@ -32,9 +28,20 @@ int main()
 		"/home/bob/Videos/test/6-the-playgroup.mp4",
 		"/home/bob/Videos/test/7-mummy-pig-at-work.mp4",
 		"/home/bob/Videos/test/8-camping.mp4",
-        */
     };
-    for (auto vsrc : vSrcArray) {
+
+    std::string vSrcArray_bitrate_8M_15M_20M_30Mbps[] = {
+        "/home/bob/Videos/test/test-1.mkv",
+        "/home/bob/Videos/test/test-2.mkv",
+        "/home/bob/Videos/test/test-3.mkv",
+        "/home/bob/Videos/test/test-4.mkv",
+
+        "/home/bob/Videos/test/test-5.mkv",
+        "/home/bob/Videos/test/test-6.mkv",
+        "/home/bob/Videos/test/test-7.mkv",
+        "/home/bob/Videos/test/test-8.mkv",
+    };
+    for (auto vsrc : vSrcArray_bitrate_8M_15M_20M_30Mbps) {
         procMgr.AddVideoSource(vsrc);
     }
 

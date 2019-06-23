@@ -140,7 +140,7 @@ int RSRtmpPublishTask::PublishStream() {
         // @remark, when use encode device, no need to sleep.
         // Really?
         if (++count >= count_to_buffer) {
-            usleep(1000 * 1000 * count / fps * 0.95f);
+            usleep(1000 * 1000 * count / fps * 0.92f);
             count = 0;
         }
 		Output(std::move(avevent));
