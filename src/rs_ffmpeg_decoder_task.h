@@ -357,7 +357,7 @@ int RSFFMpegDecoderTask::Decode()
 	while (!ShouldStop()) {
 		//av_init_packet(pPacket_);
 		ret = av_read_frame(pAVFormatCtx_, pPacket_);
-		hlogi("av_read_frame, ret: 0x%x", ret);
+		//hlogi("av_read_frame, ret: 0x%x", ret);
 		if (ret != 0) {
 			if (GetStreamType() == STREAM_TYPE_FILE) {
 				ret = 0;
