@@ -19,15 +19,15 @@ int main()
     register_fault_signals();
     //procMgr.DebugByNoFork(true);
     std::string vSrcArray_bitrate_800kbps[] = {
-        "/home/bob/Videos/test/1-muddy-puddle.mp4",
- 		"/home/bob/Videos/test/2-mr-dinasour.mp4",
-		"/home/bob/Videos/test/3-polly-parrot.mp4",
-		"/home/bob/Videos/test/4-best-friend.mp4",
+        "/home/bob/Videos/test/test-1.mp4",
+ 		"/home/bob/Videos/test/test-2.mp4",
+		"/home/bob/Videos/test/test-3.mp4",
+		"/home/bob/Videos/test/test-4.mp4",
 
-		"/home/bob/Videos/test/5-hide-and-seek.mp4",
-		"/home/bob/Videos/test/6-the-playgroup.mp4",
-		"/home/bob/Videos/test/7-mummy-pig-at-work.mp4",
-		"/home/bob/Videos/test/8-camping.mp4",
+		"/home/bob/Videos/test/test-5.mp4",
+		"/home/bob/Videos/test/test-6.mp4",
+		"/home/bob/Videos/test/test-7.mp4",
+		"/home/bob/Videos/test/test-8.mp4",
     };
 
     std::string vSrcArray_bitrate_8M_15M_20M_30Mbps[] = {

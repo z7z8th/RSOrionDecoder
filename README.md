@@ -33,21 +33,11 @@ Build
     cd ~/src
     git clone https://github.com/ossrs/srs
     cd srs/trunk
-    ./configure --without-http-callback --without-ssl && make -j14
+    ./configure --with-librtmp --without-http-callback --without-ssl && make -j8
+    # ./objs/lib/srs_librtmp.a
     # ./objs/srs -c conf/rtmp.conf
     ```
-3. export srs-librtmp and build
-    ```shell
-    cd ~/src/srs/trunk
-    ./configure --export-librtmp-project=$HOME/src/srs-librtmp
-    cd ~/src/srs-librtmp
-    # git init .
-    # git add .
-    # git commit -m "srs-librtmp @ 6e6e996bbaee73473f2ace76b7cb45a065368e7c of srs, Release 2.0.263"
-    make -j14
-    # research/librtmp/objs/srs_h264_raw_publish ../RSOrionDecoder/encoded-test.h264.tid_xxxxxxxxx rtmp://127.0.0.1:1935/live/1 25
-    ```
-4. build RSOrionDecoder (depends on srs-librtmp)
+3. build RSOrionDecoder (depends on srs-librtmp)
     ```shell
     cd ~/src
     git clone https://github.com/z7z8th/RSOrionDecoder
@@ -65,7 +55,7 @@ Run
     cd srs/trunk
     ./objs/srs -c conf/rtmp.conf
     ```
-2. Test RTMP publish (optional)
+2. Test RTMP publish (**optional**)
     ```
     research/librtmp/objs/srs_h264_raw_publish path/to/encoded-test.h264 rtmp://127.0.0.1:1935/live/1 25`
     ```

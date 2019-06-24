@@ -65,10 +65,10 @@ $(info DIRS=$(DIRS))
 $(info SRCS=$(SRCS))
 $(info OBJS=$(OBJS))
 
-INCDIRS  += $(INCDIR) $(SRC_ROOT_DIR) $(DEPDIR)/include $(DIRS) /Users/cheewing/3rd/ffmpeg/include $(SRC_ROOT_DIR)/../srs-librtmp/objs/include/
+INCDIRS  += $(INCDIR) $(SRC_ROOT_DIR) $(DEPDIR)/include $(DIRS) /Users/cheewing/3rd/ffmpeg/include $(HOME)/ffmpeg_build/include $(SRC_ROOT_DIR)/../srs/trunk/objs/include/
 CPPFLAGS += $(addprefix -I, $(INCDIRS))
 
-LIBDIRS += $(LIBDIR) $(DEPDIR)/lib /Users/cheewing/3rd/ffmpeg/lib $(SRC_ROOT_DIR)/../srs-librtmp/objs/lib/
+LIBDIRS += $(LIBDIR) $(DEPDIR)/lib /Users/cheewing/3rd/ffmpeg/lib  $(HOME)/ffmpeg_build/lib $(SRC_ROOT_DIR)/../srs/trunk/objs/lib/
 LDFLAGS += $(addprefix -L, $(LIBDIRS))
 LDFLAGS += -rdynamic
 ifeq ($(OS), Windows)
@@ -84,7 +84,7 @@ else
 ifeq ($(OS), Android)
 	LDFLAGS += -Wl,-Bdynamic -llog -lm
 else
-	LDFLAGS += $(RS_LIBS) -lavcodec -lavfilter -lavutil -lavformat -lswresample -lswscale -l:srs_librtmp.a -Wl,-lstdc++ -lpthread -lm -ldl 
+	LDFLAGS += $(RS_LIBS) -lavcodec -lavfilter -lavutil -lavformat -lswresample -lswscale -lpostproc -l:srs_librtmp.a -Wl,-lstdc++ -lpthread -lm -ldl 
 endif
 endif
 
