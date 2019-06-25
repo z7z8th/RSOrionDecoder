@@ -32,7 +32,8 @@
 	* subprocess report to master process if task done
 	* master process ask subprocess for status
 	* master process listen for external stream management event: add/remove stream, quit
-18. [ ] web based master process management, not time critical, no need to be implemented in C++
+18. [ ] configure with nginx style like config file
+19. [ ] web based master process management, not time critical, no need to be implemented in C++
 	* prefer python/nodejs for backend
 	* prefer Vue/bootstrapi + jQuery for frontend
 	* status monitor for each stream: started/ongoing/done, errors, fall behind?

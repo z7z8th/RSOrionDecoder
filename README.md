@@ -57,7 +57,7 @@ Run
     ```
 2. Test RTMP publish (**optional**)
     ```
-    research/librtmp/objs/srs_h264_raw_publish path/to/encoded-test.h264 rtmp://127.0.0.1:1935/live/1 25`
+    research/librtmp/objs/srs_h264_raw_publish path/to/encoded-test.h264 rtmp://127.0.0.1:1935/live/1 25
     ```
 3. Run RSOrionDecoder to test Decode/Encode/RTMP_Publish
     ```shell
