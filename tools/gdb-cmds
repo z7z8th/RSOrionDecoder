@@ -1,0 +1,14 @@
+
+set follow-fork-mode child
+set detach-on-fork off
+
+# the glibc source is from some version debian testing
+set substitute-path /build/glibc-vjB4T1/glibc-2.28 ../glibc-2.28
+
+# break fprintf # for test source path substitute
+break main
+
+# break RSFaceTrack::SetFaceFilterPolicy
+# break RSFaceDefence::start
+
+info break

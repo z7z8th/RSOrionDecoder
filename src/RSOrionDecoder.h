@@ -51,6 +51,7 @@ typedef void* RSHandle;
 RS_API int CALLSPEC rsOrionDecoderInit(RSHandle* pRSHandle);
 RS_API int CALLSPEC rsOrionDecoderUninit(RSHandle* pRSHandle);
 RS_API int CALLSPEC rsOrionDecoderStart(RSHandle rsHandle);
+RS_API void CALLSPEC rsOrionDecoderStop(RSHandle rsHandle);
 
 RS_API int CALLSPEC AddVideoSource(RSHandle rsHandle,
 								   std::string videoSource, 
@@ -66,7 +67,10 @@ RS_API void	CALLSPEC SetServerAddress(RSHandle rsHandle,
 									  std::string address, 
 								      std::string appKey,
 									  std::string appSecret);
-
+RS_API void	CALLSPEC SetRtmpServer(RSHandle rsHandle,
+									const std::string &rtmp_server,
+									const std::string &path,
+									int index);
 
 
 //#ifdef __cplusplus

@@ -19,6 +19,7 @@ public:
 	void Push(const T &element);
 	//void Push(const T &&element);
 	T Pop();
+	T Peek();
 	void Clear();
 	int Size();
 	bool Empty();
@@ -42,7 +43,7 @@ CTaskQueue<T>::CTaskQueue(const CTaskQueue<T> &task_queue) {
 template<typename T>
 void CTaskQueue<T>::Push(const T &element) {
 	std::unique_lock<std::mutex> lock(mutex_);
-	full_notify_.wait(lock, [this]() { return this->block_queue_.size() < this->line_size_; });
+	full_notify_.wait(lock, [this]() { return this->block_queue_.size() < static_cast<size_t>(this->line_size_); });
 	block_queue_.push_front(element);
 	empty_notify_.notify_one();
 }
@@ -62,6 +63,15 @@ T CTaskQueue<T>::Pop() {
 	T ret = block_queue_.back();
 	block_queue_.pop_back();
 	full_notify_.notify_one();
+	return std::move(ret);
+}
+
+template<typename T>
+T CTaskQueue<T>::Peek() {
+	std::unique_lock<std::mutex> lock(mutex_);
+	empty_notify_.wait(lock, [this]() { return !this->block_queue_.empty(); });
+	T ret = block_queue_.back();
+	//full_notify_.notify_one();
 	return std::move(ret);
 }
 

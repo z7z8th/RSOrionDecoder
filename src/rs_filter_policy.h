@@ -3,19 +3,19 @@
 
 namespace readsense {
 
-typedef struct FrameTrack {
+struct FrameTrack {
 	int lastFrame;
 	int trackCount;
 };
 
-typedef struct RegionRatio {
+struct RegionRatio {
 	float xRatio = 0.0;
 	float yRatio = 0.0;
 	float widthRatio = 1.0;
 	float heightRatio = 1.0;
 };
 
-typedef struct FilterPolicy {
+struct FilterPolicy {
 	RegionRatio _regionRatio;
 	int	_faceWidthThreshold = 64;
 	int	_faceHeightThreshold = 64;

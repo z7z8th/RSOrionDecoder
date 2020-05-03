@@ -18,23 +18,25 @@ public:
 
 	int GetTaskListSize() { return task_list_.Size(); }
 
-	// 线程消息投递
 	void Push(const T&& t)	{ task_list_.Push(t); }
 	void Push(const T& t)	{ task_list_.Push(t); }
 
-	// 线程主逻辑
+	/* make Clear public to clear next_task queue */
+	void Clear() { task_list_.Clear(); }
+
 	virtual void Run() = 0;
 	virtual void SetSpNextTask(std::shared_ptr<CRunnableAloneTaskList<T>> \
 							   sp_next_task);
 
 protected:
 	T _Pop() { return std::move(task_list_.Pop()); }
+	T _Peek() { return std::move(task_list_.Peek()); }
 
 	CRunnableAloneTaskList(const CRunnableAloneTaskList&) = delete;
 	CRunnableAloneTaskList& operator=(const CRunnableAloneTaskList&) = delete;
 
 protected:
-	CTaskQueue<T>	task_list_;			// 每个线程都有自己的任务队列
+	CTaskQueue<T>	task_list_;
 	std::shared_ptr<CRunnableAloneTaskList<T>> sp_next_task_{ nullptr };
 };
 

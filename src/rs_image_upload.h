@@ -6,8 +6,9 @@
 #include "librsorionportal/RSComDef.h"
 #include "librsorionportal/RSOrionPortal.h"
 
-#pragma comment(lib, "libRSOrionPortald.lib")
-
+#if defined (_MSC_VER)
+	#pragma comment(lib, "libRSOrionPortald.lib")
+#endif
 #define DEFAULT_SERVER_PORT		3030
 
 class RSImageUpload {
@@ -30,19 +31,24 @@ private:
 void RSImageUpload::Login(std::string address, std::string appKey,
 	std::string appSecret)
 {
+	/*
 	int ret = rsOrionPortal_.RSSetSrvaddr(address, DEFAULT_SERVER_PORT);
 	hlogi("RSSetSrvaddr ret:%d", ret);
 	std::string str_ret = rsOrionPortal_.RSLogin(appKey, appSecret);
+	*/
 }
 
 void RSImageUpload::Logout()
 {
+	/*
 	rsOrionPortal_.RSLogout();
+	*/
 }
 
 int RSImageUpload::UploadImage(uint8 *image, int width,
 	int height, std::string macAddress)
 {
+	/*
 	XImage xImage;
 	xImage.nWidth = width;
 	xImage.nHeight = height;
@@ -52,6 +58,7 @@ int RSImageUpload::UploadImage(uint8 *image, int width,
 	xImage.pData = image;
 
 	std::string str = rsOrionPortal_.RSDeviceCaptureImage(macAddress, xImage);
+	*/
 	//printf("###########RSDeviceCaptureImage : %s", str.c_str());
 	//hlogi("RSDeviceCaptureImage : %s", str.c_str());
 	return 0;

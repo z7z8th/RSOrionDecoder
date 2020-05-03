@@ -1,78 +1,54 @@
-#include <string>
+#include <iostream>
 #include <stdio.h>
+#include <string>
+#include <sys/wait.h>
 #include <unistd.h>
+
 #include "RSOrionDecoder.h"
+#include "rs_fault.h"
+#include <rs_proc_manager.h>
 
 #ifdef _WIN32
 #pragma comment(lib, "RSOrionDecoder.lib")
 #endif
 
+static RSProcManager& procMgr = RSProcManager::GetInstance();
+
 int main()
 {
-	std::string videoSource171("rtsp://10.1.12.171:554/media/live/1/1");
-	std::string videoSource234("rtsp://10.1.12.234:554/media/live/1/1");
-	std::string videoSource67("rtsp://10.1.12.67:554/media/live/1/1");
-	std::string videoSource17("rtsp://10.1.12.17:554/media/live/1/1");
-	std::string videoSource16("rtsp://10.1.12.16:554/media/live/1/1");
-	std::string videoSource18("rtsp://10.1.12.18:554/media/live/1/1");
-	std::string videoSource247("rtsp://10.1.12.247:554/media/live/1/1");
-	std::string videoSource248("rtsp://10.1.12.248:554/media/live/1/1");
-	std::string videoSource235("rtsp://10.1.12.235:554/media/live/1/1");
-	std::string videoSource151("rtsp://10.1.12.151:554/media/live/1/1");
-	std::string videoSourceMp4("/home/chengwei/code/video/test.mp4");
+    register_fault_signals();
+    //procMgr.DebugByNoFork(true);
+    std::string vSrcArray_bitrate_800kbps[] = {
+        "/home/bob/Videos/test/test-1.mp4",
+ 		"/home/bob/Videos/test/test-2.mp4",
+		"/home/bob/Videos/test/test-3.mp4",
+		"/home/bob/Videos/test/test-4.mp4",
 
-	std::string address = "39.106.21.118";
-	const std::string appKey = "29ae8ff0386f4810";
-	const std::string appSecret = "39a81d0d7d0e4948";
+		"/home/bob/Videos/test/test-5.mp4",
+		"/home/bob/Videos/test/test-6.mp4",
+		"/home/bob/Videos/test/test-7.mp4",
+		"/home/bob/Videos/test/test-8.mp4",
+    };
 
-	readsense::RegionRatio regionRatio;
-	regionRatio.xRatio = 0.0;
-	regionRatio.yRatio = 0.0;
-	regionRatio.widthRatio = 1.0;
-	regionRatio.heightRatio = 1.0;
+    std::string vSrcArray_bitrate_8M_15M_20M_30Mbps[] = {
+        "/home/bob/Videos/test/test-1.mkv",
+        "/home/bob/Videos/test/test-2.mkv",
+        "/home/bob/Videos/test/test-3.mkv",
+        "/home/bob/Videos/test/test-4.mkv",
 
-	readsense::FilterPolicy filter_policy;
-	filter_policy._regionRatio = regionRatio;
-	filter_policy._maxPituresPerTrack = 5;
+        "/home/bob/Videos/test/test-5.mkv",
+        "/home/bob/Videos/test/test-6.mkv",
+        "/home/bob/Videos/test/test-7.mkv",
+        "/home/bob/Videos/test/test-8.mkv",
+    };
+    for (auto vsrc : vSrcArray_bitrate_8M_15M_20M_30Mbps) {
+        procMgr.AddVideoSource(vsrc);
+    }
 
+    std::cout << "master process pid " << getpid() << std::endl;
 
-	//AddVideoSource(rsHandle, videoSourceMp4);
-	/*
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	   AddVideoSource(rsHandle, videoSource171);
-	 */
-	//AddVideoSource(rsHandle, videoSource171);
-	//AddVideoSource(rsHandle, videoSource171);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
-	//AddVideoSource(rsHandle, videoSource248);
+    procMgr.StartChildProcs();
+    procMgr.EventLoop();
 
-	const int num = 26;
-	pid_t pid[num];
-	for (int i=0; i<num; ++i) {
-		pid[i] = fork();
-		if (pid[i] == 0) {
-			RSHandle rsHandle;
-			rsOrionDecoderInit(&rsHandle);
-			AddVideoSource(rsHandle, videoSource171);
-
-			SetServerAddress(rsHandle, address, appKey, appSecret);
-			SetFaceFilterPolicy(rsHandle, filter_policy);
-			rsOrionDecoderStart(rsHandle);
-			rsOrionDecoderInit(&rsHandle);
-
-		}
-
-	}
-	return 0;
+    return 0;
 }
